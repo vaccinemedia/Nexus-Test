@@ -56,10 +56,6 @@ subj_table_android:
     DW #BCDE
     DW subj_name_9
 
-; Score penalty per question, indexed by level-1
-penalty_table:
-    DB 15, 12, 10, 8, 6
-
 ; Subject name pool (10 names)
 subj_name_0: DB "KIRA VOSS",0
 subj_name_1: DB "LEON WRAY",0
@@ -72,92 +68,115 @@ subj_name_7: DB "NASH OTERI",0
 subj_name_8: DB "JUDE SEVRIN",0
 subj_name_9: DB "MIRA TYRELL",0
 
-; --- Populate active_subjects from archetype tables using RNG ---
-; Called once at game start. For each of the 5 levels, flips a coin
-; to pick human or android archetype, then copies SUBJ_SIZE bytes
-; into active_subjects. Also randomizes portrait seed.
-init_active_subjects:
-    ld ix, active_subjects
-    ld c, 0             ; level index 0-4
-.ias_loop:
-    ld a, c
-    cp NUM_LEVELS
-    ret nc
+; --- Prepare the current subject for this level ---
+; Uses level_num (1-100) to pick a difficulty tier (0-4) and
+; randomly selects human or android archetype, copying it into
+; current_subject. Randomises portrait seed.
+prepare_current_subject:
+    ; Compute tier = min(4, (level_num - 1) / 20)
+    ld a, (level_num)
+    dec a                ; 0-99
+    ld b, 0
+.pcs_div20:
+    cp 20
+    jr c, .pcs_div_done
+    sub 20
+    inc b
+    jr .pcs_div20
+.pcs_div_done:
+    ld a, b              ; A = tier 0-4 (or higher if > 100)
+    cp 5
+    jr c, .pcs_tier_ok
+    ld a, 4              ; clamp to 4
+.pcs_tier_ok:
+    ld (pcs_tier), a
 
-    push bc
-
-    ; Get RNG bit to decide human (0) or android (1)
+    ; RNG to decide human or android
+    push af
     call rng_tick
     and 1
-    jr z, .ias_human
-
-    ; Android: source = subj_table_android + c * SUBJ_SIZE
-    pop bc
-    push bc
-    ld a, c
+    jr z, .pcs_human
+    pop af
     ld hl, subj_table_android
-    jr .ias_copy
-
-.ias_human:
-    pop bc
-    push bc
-    ld a, c
+    jr .pcs_copy
+.pcs_human:
+    pop af
     ld hl, subj_table_human
 
-.ias_copy:
-    ; HL = table base, A = level index; compute HL += A * SUBJ_SIZE (10)
+.pcs_copy:
+    ; HL = table base, A = tier; compute HL += tier * SUBJ_SIZE (10)
     or a
-    jr z, .ias_no_offset
+    jr z, .pcs_no_offset
     ld b, a
-.ias_mul:
+.pcs_mul:
     ld de, SUBJ_SIZE
     add hl, de
-    djnz .ias_mul
-.ias_no_offset:
-    ; Copy SUBJ_SIZE bytes from (HL) to (IX)
-    ld b, SUBJ_SIZE
-.ias_cp_byte:
+    djnz .pcs_mul
+.pcs_no_offset:
+    ; Copy SUBJ_SIZE bytes from (HL) to current_subject
+    ld de, current_subject
+    ld bc, SUBJ_SIZE
+    ldir
+
+    ; Pick a random name from the pool (10 names)
+    call rng_tick
+    and #07              ; 0-7 (miss top 2, fine for variety)
+    add a, a
+    ld e, a
+    ld d, 0
+    ld hl, subj_name_ptrs
+    add hl, de
     ld a, (hl)
-    ld (ix+0), a
     inc hl
-    inc ix
-    djnz .ias_cp_byte
+    ld h, (hl)
+    ld l, a              ; HL = name string pointer
+    ld (current_subject + SUBJ_NAME), hl
 
-    ; Randomize portrait seed for this subject (overwrite bytes at offset 6-7)
-    push ix
-    ld de, -SUBJ_SIZE + SUBJ_PORTRAIT
-    add ix, de
+    ; Randomise portrait seed
+    ld ix, current_subject
     call rng_tick
-    ld (ix+0), a
+    ld (ix + SUBJ_PORTRAIT), a
     call rng_tick
-    ld (ix+1), a
-    pop ix
-
-    pop bc
-    inc c
-    jr .ias_loop
-
-; Look up active subject record: A = level (1-5), returns HL = pointer
-get_subject_ptr:
-    dec a
-    ld l, a
-    ld h, 0
-    ld c, l
-    ld b, h
-    add hl, hl
-    add hl, hl
-    add hl, bc
-    add hl, hl         ; HL = (level-1) * 10
-    ld bc, active_subjects
-    add hl, bc
+    ld (ix + SUBJ_PORTRAIT + 1), a
     ret
 
-; A = level (1-5), returns A = penalty per question
+pcs_tier: DB 0
+
+; Name pointer table for random selection
+subj_name_ptrs:
+    DW subj_name_0
+    DW subj_name_1
+    DW subj_name_2
+    DW subj_name_3
+    DW subj_name_4
+    DW subj_name_5
+    DW subj_name_6
+    DW subj_name_7
+    DW subj_name_8
+    DW subj_name_9
+
+; Returns HL = pointer to current_subject (ignores A for compat)
+get_subject_ptr:
+    ld hl, current_subject
+    ret
+
+; A = level (1-100), returns A = penalty per question
+; Formula: starts at 5, increases to 20 across 100 levels
 get_penalty:
-    dec a
-    ld hl, penalty_table
-    ld c, a
+    dec a                ; 0-99
+    ; penalty = 5 + (level_index * 15) / 99
+    ; Approximate: 5 + level_index / 7 (gives 5..19)
     ld b, 0
-    add hl, bc
-    ld a, (hl)
+.gp_div:
+    cp 7
+    jr c, .gp_done
+    sub 7
+    inc b
+    jr .gp_div
+.gp_done:
+    ld a, b
+    add a, 5             ; 5 + quotient
+    cp 20
+    ret c
+    ld a, 20             ; clamp
     ret

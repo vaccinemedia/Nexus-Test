@@ -76,6 +76,7 @@ rng_seed:        DW #A55A
 
 level_num:       DB 1
 total_score:     DW 0
+lives:           DB STARTING_LIVES
 questions_asked: DB 0
 cursor_x:        DB 0
 cursor_y:        DB 0
@@ -92,8 +93,8 @@ q_weight:        DB 0
 pattern_flag:    DB 0
 blink_timer:     DB 0
 
-; Active subjects for this playthrough (5 x SUBJ_SIZE)
-active_subjects: DS NUM_LEVELS * SUBJ_SIZE
+; Current subject record for this level (single SUBJ_SIZE record)
+current_subject: DS SUBJ_SIZE
 
 ; Response assembly buffer (128 bytes)
 response_buffer: DS 128

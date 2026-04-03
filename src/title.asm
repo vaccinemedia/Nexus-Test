@@ -17,33 +17,33 @@ title_frame:
     ld hl, title_scr_data
     call copy_scr_to_screen
 
-    ; Clear pixel strips to create solid black bands behind text
-    ld d, 3
+    ; Black strips behind text rows (top: rows 1-2, bottom: rows 20, 22)
+    ld d, 1
     call clear_pixel_strip
-    ld d, 4
+    ld d, 2
     call clear_pixel_strip
-    ld d, 7
+    ld d, 20
     call clear_pixel_strip
-    ld d, 11
+    ld d, 22
     call clear_pixel_strip
 
     ; Set full-width black-paper attrs for strip rows
-    ld d, 3
+    ld d, 1
     ld b, 0
     ld e, 32
-    ld a, INK_WHITE + (INK_BLACK*8) + BRIGHT
+    ld a, INK_BLUE + (INK_BLACK*8) + BRIGHT
     call set_row_attrs
-    ld d, 4
+    ld d, 2
     ld b, 0
     ld e, 32
-    ld a, INK_WHITE + (INK_BLACK*8) + BRIGHT
+    ld a, INK_BLUE + (INK_BLACK*8) + BRIGHT
     call set_row_attrs
-    ld d, 7
+    ld d, 20
     ld b, 0
     ld e, 32
     ld a, INK_GREEN + (INK_BLACK*8) + BRIGHT
     call set_row_attrs
-    ld d, 11
+    ld d, 22
     ld b, 0
     ld e, 32
     ld a, INK_CYAN + (INK_BLACK*8) + BRIGHT
@@ -52,26 +52,26 @@ title_frame:
     ; Use custom sci-fi font for title text
     call use_custom_font
 
-    ; "NEXUS TEST" at double height, centred at row 3 (spans rows 3-4)
+    ; "NEXUS TEST" at double height, top of screen (rows 1-2), bright blue
     ld a, 11
     ld (pr_col), a
-    ld a, 3
+    ld a, 1
     ld (pr_row), a
     ld hl, str_title
     call print_str_tall
 
-    ; "ANDROID DETECTION UNIT" at normal height, row 7
+    ; "ANDROID DETECTION UNIT" at bottom, row 20
     ld a, 5
     ld (pr_col), a
-    ld a, 7
+    ld a, 20
     ld (pr_row), a
     ld hl, str_subtitle
     call print_str
 
-    ; "PRESS ANY KEY" at normal height, row 11
+    ; "PRESS ANY KEY" at bottom, row 22
     ld a, 9
     ld (pr_col), a
-    ld a, 11
+    ld a, 22
     ld (pr_row), a
     ld hl, str_press
     call print_str

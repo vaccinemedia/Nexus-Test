@@ -514,13 +514,16 @@ start_new_game:
 .sng_seed_ok:
     ld (rng_seed), hl
 
-    ; Initialize active subjects for this playthrough
-    call init_active_subjects
-
     ld a, 1
     ld (level_num), a
+    ld a, STARTING_LIVES
+    ld (lives), a
     ld hl, 0
     ld (total_score), hl
+
+    ; Prepare subject for level 1
+    call prepare_current_subject
+
     xor a
     ld (screen_drawn), a
     ld a, ST_LEVEL_INTRO

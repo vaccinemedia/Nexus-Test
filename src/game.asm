@@ -8,13 +8,16 @@ level_intro_frame:
     or a
     jp nz, .li_wait
 
+    ; Prepare subject for this level
+    call prepare_current_subject
+
     call use_custom_font
 
     ld a, INK_CYAN + (INK_BLACK*8) + BRIGHT
     call clear_screen_attrs
 
-    ; "SUBJECT X OF 5"
-    ld a, 10
+    ; "SUBJECT N OF 100"
+    ld a, 8
     ld (pr_col), a
     ld a, 8
     ld (pr_row), a
@@ -24,7 +27,9 @@ level_intro_frame:
     inc a
     ld (pr_col), a
     ld a, (level_num)
-    call print_num
+    ld l, a
+    ld h, 0
+    call print_num16
     ld a, (pr_col)
     inc a
     ld (pr_col), a
@@ -32,7 +37,6 @@ level_intro_frame:
     call print_str
 
     ; Subject name on next line
-    ld a, (level_num)
     call get_subject_ptr
     ld de, SUBJ_NAME
     add hl, de
@@ -40,7 +44,7 @@ level_intro_frame:
     inc hl
     ld h, (hl)
     ld l, a             ; HL = name string pointer
-    ld a, 11
+    ld a, 10
     ld (pr_col), a
     ld a, 11
     ld (pr_row), a
@@ -86,7 +90,6 @@ level_intro_frame:
     ld (prev_flush+1), a
     ld (prev_flush+2), a
     ; Set current_subj pointer
-    ld a, (level_num)
     call get_subject_ptr
     ld (current_subj), hl
     ; Init ambient music
@@ -744,39 +747,48 @@ draw_status_bar:
     ld e, 32
     ld c, 1
     call clear_text_rect
-    ; LVL N
-    ld a, 0
+    ; LVL NNN (cols 0-7)
+    xor a
     ld (pr_col), a
-    ld a, 0
     ld (pr_row), a
     ld hl, str_lvl
     call print_str
-    ld a, (pr_col)
-    inc a
-    ld (pr_col), a
+    ld hl, pr_col
+    inc (hl)
     ld a, (level_num)
-    call print_num
-    ; SCORE NNN
+    ld l, a
+    ld h, 0
+    call print_num16
+    ; SC NNNN (cols 8-15)
     ld a, 8
     ld (pr_col), a
     ld hl, str_score
     call print_str
-    ld a, (pr_col)
-    inc a
-    ld (pr_col), a
+    ld hl, pr_col
+    inc (hl)
     ld hl, (total_score)
     call print_num16
-    ; ASKED N
-    ld a, 20
+    ; Q NN (cols 16-20)
+    ld a, 16
     ld (pr_col), a
-    ld a, 0
+    xor a
     ld (pr_row), a
     ld hl, str_asked
     call print_str
-    ld a, (pr_col)
-    inc a
-    ld (pr_col), a
+    ld hl, pr_col
+    inc (hl)
     ld a, (questions_asked)
+    call print_num
+    ; LIVES N (cols 24-31)
+    ld a, 24
+    ld (pr_col), a
+    xor a
+    ld (pr_row), a
+    ld hl, str_lives
+    call print_str
+    ld hl, pr_col
+    inc (hl)
+    ld a, (lives)
     call print_num
     ; Attr
     ld d, 0
@@ -985,11 +997,17 @@ verdict_frame:
     cp b
     jr z, .vf_correct
 
-    ; Wrong
+    ; Wrong — lose a life, no score
     xor a
     ld (level_score), a
-    ld a, 0
     ld (verdict_correct), a
+    ; Decrement lives
+    ld a, (lives)
+    or a
+    jr z, .vf_no_dec           ; already 0 (shouldn't happen)
+    dec a
+    ld (lives), a
+.vf_no_dec:
     ld a, SFX_WRONG
     call ay_play_sfx
     jr .vf_draw
@@ -1106,6 +1124,19 @@ verdict_frame:
     ld hl, (total_score)
     call print_num16
 
+    ; Lives remaining
+    ld a, 10
+    ld (pr_col), a
+    ld a, 16
+    ld (pr_row), a
+    ld hl, str_lives
+    call print_str
+    ld a, (pr_col)
+    inc a
+    ld (pr_col), a
+    ld a, (lives)
+    call print_num
+
     ; "PRESS KEY..."
     ld a, 3
     ld (pr_col), a
@@ -1137,10 +1168,20 @@ verdict_frame:
     call use_rom_font
     xor a
     ld (screen_drawn), a
-    ; Next level or gameover
+
+    ; If wrong and lives == 0 -> game over
+    ld a, (verdict_correct)
+    or a
+    jr nz, .vf_advance
+    ld a, (lives)
+    or a
+    jr z, .vf_gameover
+
+.vf_advance:
+    ; Advance to next level
     ld a, (level_num)
     cp NUM_LEVELS
-    jr nc, .vf_gameover
+    jr nc, .vf_gameover         ; completed all 100 levels
     inc a
     ld (level_num), a
     ld a, ST_LEVEL_INTRO

@@ -420,10 +420,11 @@ str_title:      DB "NEXUS TEST",0
 str_subtitle:   DB "ANDROID DETECTION UNIT",0
 str_press:      DB "PRESS ANY KEY",0
 str_subject:    DB "SUBJECT",0
-str_of:         DB "OF 5",0
+str_of:         DB "OF 100",0
 str_lvl:        DB "LVL",0
 str_score:      DB "SC",0
 str_asked:      DB "Q",0
+str_lives:      DB "LIVES",0
 str_query:      DB "QUERY:",0
 str_enter_ask:  DB "ENTER=ASK",0
 str_h_human:    DB "H=HUMAN",0
