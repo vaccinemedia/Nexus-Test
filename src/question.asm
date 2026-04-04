@@ -393,17 +393,143 @@ compute_pattern:
     ret
 
 ; ================================================================
-; Select response based on first selected icon, subject type,
-; and RNG. 16 icons x 2 types x 8 variations = 256 entries.
-; Index = icon * 16 + type * 8 + variation(0-7).
-; Returns HL = pointer to response string.
+; Token engine constants
+; ================================================================
+TK_NOUN   EQU 1          ; template marker: insert token_noun
+TK_DETAIL EQU 2          ; template marker: insert token_detail
+
+; ================================================================
+; Pick random noun and detail tokens for an icon.
+; A = icon index (0-15). Sets token_noun and token_detail.
+; ================================================================
+pick_icon_tokens:
+    push af
+    ; Noun: noun_ptrs + icon*8 + rng(0-3)*2
+    add a, a
+    add a, a
+    add a, a             ; A = icon*8
+    ld d, 0
+    ld e, a
+    push de
+    call rng_tick
+    pop de
+    and 3
+    add a, a
+    add a, e
+    ld e, a
+    ld hl, noun_ptrs
+    add hl, de
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    ld (token_noun), hl
+
+    ; Detail: detail_ptrs + icon*4 + rng(0-1)*2
+    pop af
+    add a, a
+    add a, a             ; A = icon*4
+    ld d, 0
+    ld e, a
+    push de
+    call rng_tick
+    pop de
+    and 1
+    add a, a
+    add a, e
+    ld e, a
+    ld hl, detail_ptrs
+    add hl, de
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    ld (token_detail), hl
+    ret
+
+; ================================================================
+; Expand a template string into response_buffer.
+; HL = template pointer. Bytes 1/2 are replaced with token strings.
+; Returns HL = response_buffer.
+; ================================================================
+expand_template:
+    ld de, response_buffer
+.et_loop:
+    ld a, (hl)
+    or a
+    jr z, .et_end
+    cp TK_NOUN
+    jr z, .et_noun
+    cp TK_DETAIL
+    jr z, .et_detail
+    ld (de), a
+    inc de
+    inc hl
+    jr .et_loop
+.et_noun:
+    push hl
+    ld hl, (token_noun)
+    call .et_copy
+    pop hl
+    inc hl
+    jr .et_loop
+.et_detail:
+    push hl
+    ld hl, (token_detail)
+    call .et_copy
+    pop hl
+    inc hl
+    jr .et_loop
+.et_end:
+    xor a
+    ld (de), a
+    ld hl, response_buffer
+    ret
+.et_copy:
+    ld a, (hl)
+    or a
+    ret z
+    ld (de), a
+    inc hl
+    inc de
+    jr .et_copy
+
+; ================================================================
+; Pick a random scenario template for an icon, expand with tokens.
+; A = icon index. Returns HL = response_buffer (expanded string).
+; ================================================================
+pick_and_expand_scenario:
+    ; scenario_tmpl_ptrs + icon*8 + rng(0-3)*2
+    add a, a
+    add a, a
+    add a, a             ; A = icon*8
+    ld d, 0
+    ld e, a
+    push de
+    call rng_tick
+    pop de
+    and 3
+    add a, a
+    add a, e
+    ld e, a
+    ld hl, scenario_tmpl_ptrs
+    add hl, de
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a              ; HL = template pointer
+    jp expand_template   ; tail call, returns HL = response_buffer
+
+; ================================================================
+; Select response template and expand with tokens.
+; Uses first icon, subject type, and RNG.
+; Returns HL = response_buffer (expanded string).
 ; ================================================================
 select_and_build_response:
     ld hl, (current_subj)
     ld a, (hl)
     ld (sr_subj_type), a
 
-    ; Get first selected icon
     ld a, (query_icons)
     cp ICON_NONE
     jr nz, .sr_has_icon
@@ -424,24 +550,22 @@ select_and_build_response:
     add a, d
     ld d, a              ; D = icon*16 + type*8
 
-    ; Variation: rng mod 8
     push de
     call rng_tick
     pop de
     and 7
     add a, d             ; A = final index (0-255)
 
-    ; 16-bit table lookup: icon_response_ptrs + index * 2
     ld l, a
     ld h, 0
-    add hl, hl           ; HL = index * 2
+    add hl, hl
     ld de, icon_response_ptrs
     add hl, de
     ld a, (hl)
     inc hl
     ld h, (hl)
-    ld l, a
-    ret
+    ld l, a              ; HL = template pointer
+    jp expand_template   ; expand and return HL = response_buffer
 
 sr_subj_type:  DB 0
 

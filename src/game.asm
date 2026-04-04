@@ -292,50 +292,22 @@ interrogation_frame:
     ld hl, (current_subj)
     call compute_gauges
 
-    ; 4. Select and build response text
-    ld a, (ask_class)
-    ld b, a
-    call select_and_build_response
-    ; HL = response string
+    ; 4. Pick tokens for this icon (shared by scenario + response)
+    ld a, (query_icons)
+    cp ICON_NONE
+    jr z, .int_no_tokens
+    call pick_icon_tokens
+.int_no_tokens:
 
     ; 5. Display scenario prompt and response text
-    push hl
     call clear_response_area
 
-    ; Print scenario prompt based on first selected icon (random 1-of-5)
+    ; 5a. Expand and print scenario template
     ld a, (query_icons)
     cp ICON_NONE
     jr z, .int_no_scenario
-    ; Compute table offset: icon * 10 + variation * 2
-    ; icon * 10 = icon * 8 + icon * 2
-    ld b, a              ; B = icon
-    add a, a             ; A = icon * 2
-    add a, a             ; A = icon * 4
-    add a, a             ; A = icon * 8
-    add a, b             ; A = icon * 9
-    add a, b             ; A = icon * 10
-    ld d, 0
-    ld e, a              ; DE = icon * 10
-    ; Random variation 0-4 via rng_tick mod 5
-    push de
-    call rng_tick
-    pop de
-    and #1f              ; 0-31
-.int_mod5:
-    cp 5
-    jr c, .int_mod5_ok
-    sub 5
-    jr .int_mod5
-.int_mod5_ok:
-    add a, a             ; variation * 2
-    add a, e
-    ld e, a              ; DE = icon*10 + variation*2
-    ld hl, scenario_ptrs
-    add hl, de
-    ld a, (hl)
-    inc hl
-    ld h, (hl)
-    ld l, a              ; HL = scenario string pointer
+    ld a, (query_icons)
+    call pick_and_expand_scenario  ; HL = response_buffer (expanded)
     ld a, RESPONSE_COL
     ld (pr_col), a
     ld a, RESPONSE_ROW
@@ -343,7 +315,7 @@ interrogation_frame:
     ld a, RESPONSE_W
     ld (box_width), a
     call print_str_box
-    ; Set scenario row attrs (white on black, 2 rows for wrapped prompts)
+    ; Set scenario row attrs
     ld d, RESPONSE_ROW
     ld b, RESPONSE_COL
     ld e, RESPONSE_W
@@ -356,7 +328,8 @@ interrogation_frame:
     call set_row_attrs
 .int_no_scenario:
 
-    pop hl
+    ; 5b. Expand and print response template (uses same tokens)
+    call select_and_build_response  ; HL = response_buffer (expanded)
     ld a, RESPONSE_COL
     ld (pr_col), a
     ld a, RESPONSE_ROW + 2

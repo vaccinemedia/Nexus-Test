@@ -96,7 +96,11 @@ blink_timer:     DB 0
 ; Current subject record for this level (single SUBJ_SIZE record)
 current_subject: DS SUBJ_SIZE
 
-; Response assembly buffer (128 bytes)
+; Token engine state (set by pick_icon_tokens, used by expand_template)
+token_noun:      DW 0
+token_detail:    DW 0
+
+; Response/template expansion buffer (128 bytes)
 response_buffer: DS 128
 
 ; Attract mode
