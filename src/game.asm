@@ -1111,7 +1111,9 @@ verdict_frame:
     ld a, 12
     ld (pr_row), a
     ld a, (level_score)
-    call print_num
+    ld h, 0
+    ld l, a
+    call print_num16
     ld a, (pr_col)
     inc a
     ld (pr_col), a
