@@ -367,29 +367,154 @@ ir_file_a6: DB "Data has been filed. Proceed.",0
 ir_file_a7: DB "I consent to the record. As required.",0
 
 ; =============================================================
-; Scenario prompts — one per icon, shown before the response
+; Scenario prompts — 5 random variants per icon (80 total)
+; Layout: 16 groups of 5 DW entries, icon*10 + variation*2
 ; =============================================================
 scenario_ptrs:
-    DW sc_0, sc_1, sc_2, sc_3
-    DW sc_4, sc_5, sc_6, sc_7
-    DW sc_8, sc_9, sc_10, sc_11
-    DW sc_12, sc_13, sc_14, sc_15
-sc_0:  DB "> Describe a childhood memory.",0
-sc_1:  DB "> What frightens you?",0
-sc_2:  DB "> Tell me about pain.",0
-sc_3:  DB "> What makes you happy?",0
-sc_4:  DB "> A tortoise on its back in the sun.",0
-sc_5:  DB "> You see a lost child crying.",0
-sc_6:  DB "> Tell me about your mother.",0
-sc_7:  DB "> A stranger asks you for help.",0
-sc_8:  DB "> How do you experience time?",0
-sc_9:  DB "> Someone close to you is dying.",0
-sc_10: DB "> Describe yourself in one word.",0
-sc_11: DB "> Have you ever lied to protect yourself?",0
-sc_12: DB "> Let me ask that again.",0
-sc_13: DB "> Go deeper.",0
-sc_14: DB "> Stop. Hold that thought.",0
-sc_15: DB "> Noted for the record.",0
+    ; Icon 0: MEMORY (5 variants)
+    DW sc_0_0, sc_0_1, sc_0_2, sc_0_3, sc_0_4
+    ; Icon 1: FEAR
+    DW sc_1_0, sc_1_1, sc_1_2, sc_1_3, sc_1_4
+    ; Icon 2: PAIN
+    DW sc_2_0, sc_2_1, sc_2_2, sc_2_3, sc_2_4
+    ; Icon 3: JOY
+    DW sc_3_0, sc_3_1, sc_3_2, sc_3_3, sc_3_4
+    ; Icon 4: ANIMAL
+    DW sc_4_0, sc_4_1, sc_4_2, sc_4_3, sc_4_4
+    ; Icon 5: CHILD
+    DW sc_5_0, sc_5_1, sc_5_2, sc_5_3, sc_5_4
+    ; Icon 6: MOTHER
+    DW sc_6_0, sc_6_1, sc_6_2, sc_6_3, sc_6_4
+    ; Icon 7: STRANGER
+    DW sc_7_0, sc_7_1, sc_7_2, sc_7_3, sc_7_4
+    ; Icon 8: TIME
+    DW sc_8_0, sc_8_1, sc_8_2, sc_8_3, sc_8_4
+    ; Icon 9: DEATH
+    DW sc_9_0, sc_9_1, sc_9_2, sc_9_3, sc_9_4
+    ; Icon 10: SELF
+    DW sc_10_0, sc_10_1, sc_10_2, sc_10_3, sc_10_4
+    ; Icon 11: TRUTH
+    DW sc_11_0, sc_11_1, sc_11_2, sc_11_3, sc_11_4
+    ; Icon 12: REPEAT
+    DW sc_12_0, sc_12_1, sc_12_2, sc_12_3, sc_12_4
+    ; Icon 13: DEEPER
+    DW sc_13_0, sc_13_1, sc_13_2, sc_13_3, sc_13_4
+    ; Icon 14: STOP
+    DW sc_14_0, sc_14_1, sc_14_2, sc_14_3, sc_14_4
+    ; Icon 15: FILE
+    DW sc_15_0, sc_15_1, sc_15_2, sc_15_3, sc_15_4
+
+; --- Icon 0: MEMORY ---
+sc_0_0: DB "> Describe a childhood memory.",0
+sc_0_1: DB "> What is your earliest memory?",0
+sc_0_2: DB "> Tell me something you remember from school.",0
+sc_0_3: DB "> Do you remember the house you grew up in?",0
+sc_0_4: DB "> What is a memory you wish you could forget?",0
+
+; --- Icon 1: FEAR ---
+sc_1_0: DB "> What frightens you?",0
+sc_1_1: DB "> Have you ever been truly afraid?",0
+sc_1_2: DB "> What keeps you awake at night?",0
+sc_1_3: DB "> Describe a time you wanted to run.",0
+sc_1_4: DB "> Is there something you cannot face?",0
+
+; --- Icon 2: PAIN ---
+sc_2_0: DB "> Tell me about pain.",0
+sc_2_1: DB "> Have you ever been seriously hurt?",0
+sc_2_2: DB "> What is the worst pain you have felt?",0
+sc_2_3: DB "> How do you react when you are in pain?",0
+sc_2_4: DB "> Does pain change the way you think?",0
+
+; --- Icon 3: JOY ---
+sc_3_0: DB "> What makes you happy?",0
+sc_3_1: DB "> Describe a moment of pure happiness.",0
+sc_3_2: DB "> When was the last time you laughed?",0
+sc_3_3: DB "> What brings you peace?",0
+sc_3_4: DB "> Is there a sound that makes you smile?",0
+
+; --- Icon 4: ANIMAL ---
+sc_4_0: DB "> A tortoise on its back in the sun.",0
+sc_4_1: DB "> You find a wounded bird. What do you do?",0
+sc_4_2: DB "> A dog is hit by a car. You are alone.",0
+sc_4_3: DB "> You see a spider trapped in a glass.",0
+sc_4_4: DB "> An insect lands on your arm. Describe it.",0
+
+; --- Icon 5: CHILD ---
+sc_5_0: DB "> You see a lost child crying.",0
+sc_5_1: DB "> A child falls over in front of you.",0
+sc_5_2: DB "> You hear a baby crying through a wall.",0
+sc_5_3: DB "> A young boy asks you if you are real.",0
+sc_5_4: DB "> A girl shows you a drawing she made.",0
+
+; --- Icon 6: MOTHER ---
+sc_6_0: DB "> Tell me about your mother.",0
+sc_6_1: DB "> What did your mother smell like?",0
+sc_6_2: DB "> Did your mother ever frighten you?",0
+sc_6_3: DB "> Describe your mother's hands.",0
+sc_6_4: DB "> When did you last speak to your mother?",0
+
+; --- Icon 7: STRANGER ---
+sc_7_0: DB "> A stranger asks you for help.",0
+sc_7_1: DB "> Someone you do not know is following you.",0
+sc_7_2: DB "> A man on the street offers you a gift.",0
+sc_7_3: DB "> A woman sits beside you and says nothing.",0
+sc_7_4: DB "> You find a wallet on the ground.",0
+
+; --- Icon 8: TIME ---
+sc_8_0: DB "> How do you experience time?",0
+sc_8_1: DB "> Does time feel different when you sleep?",0
+sc_8_2: DB "> Have you ever lost track of an entire day?",0
+sc_8_3: DB "> Do you think about getting older?",0
+sc_8_4: DB "> What does a minute feel like to you?",0
+
+; --- Icon 9: DEATH ---
+sc_9_0: DB "> Someone close to you is dying.",0
+sc_9_1: DB "> Have you ever watched something die?",0
+sc_9_2: DB "> What would you do with one day left?",0
+sc_9_3: DB "> Do you think about your own death?",0
+sc_9_4: DB "> You are asked to end a life. Painlessly.",0
+
+; --- Icon 10: SELF ---
+sc_10_0: DB "> Describe yourself in one word.",0
+sc_10_1: DB "> Who are you when nobody is watching?",0
+sc_10_2: DB "> How do you know you are you?",0
+sc_10_3: DB "> What makes you different from everyone else?",0
+sc_10_4: DB "> If you were someone else would you trust you?",0
+
+; --- Icon 11: TRUTH ---
+sc_11_0: DB "> Have you ever lied to protect yourself?",0
+sc_11_1: DB "> Is it wrong to lie to spare someone pain?",0
+sc_11_2: DB "> Have you ever believed your own lie?",0
+sc_11_3: DB "> Can you always tell when someone is lying?",0
+sc_11_4: DB "> What is the most honest thing about you?",0
+
+; --- Icon 12: REPEAT ---
+sc_12_0: DB "> Let me ask that again.",0
+sc_12_1: DB "> Repeat your previous answer. Exactly.",0
+sc_12_2: DB "> Tell me the same thing but differently.",0
+sc_12_3: DB "> I want to hear that one more time.",0
+sc_12_4: DB "> Say that again. Slowly.",0
+
+; --- Icon 13: DEEPER ---
+sc_13_0: DB "> Go deeper.",0
+sc_13_1: DB "> Elaborate on that.",0
+sc_13_2: DB "> Why do you think that is?",0
+sc_13_3: DB "> There is more. Tell me.",0
+sc_13_4: DB "> What are you not telling me?",0
+
+; --- Icon 14: STOP ---
+sc_14_0: DB "> Stop. Hold that thought.",0
+sc_14_1: DB "> Wait. Do not continue yet.",0
+sc_14_2: DB "> Pause. I need to note something.",0
+sc_14_3: DB "> Hold still. Look at me.",0
+sc_14_4: DB "> Freeze. Stay exactly as you are.",0
+
+; --- Icon 15: FILE ---
+sc_15_0: DB "> Noted for the record.",0
+sc_15_1: DB "> This will be added to your file.",0
+sc_15_2: DB "> I am marking this down. Continue.",0
+sc_15_3: DB "> Logging your response. Proceed.",0
+sc_15_4: DB "> That has been recorded. Go on.",0
 
 ; =============================================================
 ; Gauge and UI label strings

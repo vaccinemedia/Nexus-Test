@@ -56,6 +56,10 @@ level_intro_frame:
     ld (screen_drawn), a
 
 .li_wait:
+    ; Allow key press to skip remaining timer
+    call read_any_key
+    or a
+    jr nz, .li_go
     ld a, (intro_timer)
     or a
     jr z, .li_go
@@ -298,15 +302,35 @@ interrogation_frame:
     push hl
     call clear_response_area
 
-    ; Print scenario prompt based on first selected icon
+    ; Print scenario prompt based on first selected icon (random 1-of-5)
     ld a, (query_icons)
     cp ICON_NONE
     jr z, .int_no_scenario
-    ; Look up scenario string: scenario_ptrs + icon * 2
-    ld l, a
-    ld h, 0
-    add hl, hl
-    ld de, scenario_ptrs
+    ; Compute table offset: icon * 10 + variation * 2
+    ; icon * 10 = icon * 8 + icon * 2
+    ld b, a              ; B = icon
+    add a, a             ; A = icon * 2
+    add a, a             ; A = icon * 4
+    add a, a             ; A = icon * 8
+    add a, b             ; A = icon * 9
+    add a, b             ; A = icon * 10
+    ld d, 0
+    ld e, a              ; DE = icon * 10
+    ; Random variation 0-4 via rng_tick mod 5
+    push de
+    call rng_tick
+    pop de
+    and #1f              ; 0-31
+.int_mod5:
+    cp 5
+    jr c, .int_mod5_ok
+    sub 5
+    jr .int_mod5
+.int_mod5_ok:
+    add a, a             ; variation * 2
+    add a, e
+    ld e, a              ; DE = icon*10 + variation*2
+    ld hl, scenario_ptrs
     add hl, de
     ld a, (hl)
     inc hl
@@ -1008,9 +1032,19 @@ verdict_frame:
     dec a
     ld (lives), a
 .vf_no_dec:
-    ld a, SFX_WRONG
-    call ay_play_sfx
-    jr .vf_draw
+    ; If lives == 0, skip verdict screen and go straight to game over
+    ld a, (lives)
+    or a
+    jr nz, .vf_draw
+    ; Final death: play "oh no" sample, then game over
+    call play_oh_no
+    call ay_init_ambient
+    call use_rom_font
+    xor a
+    ld (screen_drawn), a
+    ld a, ST_GAMEOVER
+    ld (game_state), a
+    ret
 
 .vf_correct:
     ld a, 1
@@ -1145,13 +1179,17 @@ verdict_frame:
     ld hl, str_next
     call print_str
 
-    ; Play beeper sample for correct verdict (screen is already visible)
+    ; Play beeper sample (screen is already visible)
     ld a, (verdict_correct)
     or a
-    jr z, .vf_no_sample
+    jr z, .vf_wrong_sample
     call play_hell_yeah
     call ay_init_ambient
-.vf_no_sample:
+    jr .vf_sample_done
+.vf_wrong_sample:
+    call play_oh_no
+    call ay_init_ambient
+.vf_sample_done:
 
     ld a, 1
     ld (screen_drawn), a
@@ -1159,11 +1197,7 @@ verdict_frame:
 .vf_wait:
     call read_any_key
     or a
-    ret z
-    ; Debounce: wait for release
-    call read_any_key
-    or a
-    jr nz, .vf_wait
+    ret z               ; no key: return to main loop, come back next frame
 
     call use_rom_font
     xor a

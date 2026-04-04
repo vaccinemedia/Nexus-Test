@@ -591,6 +591,38 @@ hellyeah_data:
     INCBIN "hellyeah.bin"
 HELLYEAH_BYTES EQU $ - hellyeah_data
 
+; Same 1-bit PCM playback for "oh no" sample (wrong verdict)
+play_oh_no:
+    call ay_mute
+    ld hl, ohno_data
+    ld de, OHNO_BYTES
+    di
+.pon_byte:
+    ld b, (hl)
+    inc hl
+    ld c, 8
+.pon_bit:
+    rl b
+    sbc a, a
+    and #10
+    out (#fe), a
+    ld a, 23
+.pon_dly:
+    dec a
+    jr nz, .pon_dly
+    dec c
+    jr nz, .pon_bit
+    dec de
+    ld a, d
+    or e
+    jr nz, .pon_byte
+    ei
+    ret
+
+ohno_data:
+    INCBIN "ohno.bin"
+OHNO_BYTES EQU $ - ohno_data
+
 ; ---- SFX tick (called each frame) ----
 ay_tick_sfx:
     ld a, (sfx_timer)

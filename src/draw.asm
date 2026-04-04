@@ -118,35 +118,72 @@ print_num:
     inc (hl)
     ret
 
-; --- Print 16-bit number 0-999. HL = value. Advances cursor. ---
+; --- Print 16-bit number 0-65535. HL = value. Advances cursor. ---
+; Uses speculative subtraction for each decimal place, suppresses leading zeros.
 print_num16:
-    ; Hundreds
-    ld a, l
-    ld b, h
-    ld de, 0            ; DE = working copy as we only do 0-500
-    ; Convert HL to decimal: simple repeated subtraction
     push hl
-    ld b, 0             ; hundreds digit
-.pn16_h:
+    ld c, 0             ; C = leading-zero suppression flag (0 = still suppressing)
+
+    ; Ten-thousands (subtract 10000 repeatedly)
+    ld b, 0
+.pn16_10k:
+    ld a, l
+    sub low 10000
+    ld e, a
     ld a, h
-    or a
-    jr nz, .pn16_h_sub
+    sbc a, high 10000
+    jr c, .pn16_10k_done
+    ld h, a
+    ld l, e
+    inc b
+    jr .pn16_10k
+.pn16_10k_done:
+    call .pn16_digit
+
+    ; Thousands (subtract 1000)
+    ld b, 0
+.pn16_1k:
+    ld a, l
+    sub low 1000
+    ld e, a
+    ld a, h
+    sbc a, high 1000
+    jr c, .pn16_1k_done
+    ld h, a
+    ld l, e
+    inc b
+    jr .pn16_1k
+.pn16_1k_done:
+    call .pn16_digit
+
+    ; Hundreds (H is now 0)
+    ld b, 0
+.pn16_100:
     ld a, l
     cp 100
-    jr c, .pn16_h_done
-.pn16_h_sub:
-    ld a, l
+    jr c, .pn16_100_done
     sub 100
     ld l, a
-    ld a, h
-    sbc a, 0
-    ld h, a
     inc b
-    jr .pn16_h
-.pn16_h_done:
-    ld a, b
-    or a
-    jr z, .pn16_tens
+    jr .pn16_100
+.pn16_100_done:
+    call .pn16_digit
+
+    ; Tens
+    ld a, l
+    ld b, 0
+.pn16_10:
+    cp 10
+    jr c, .pn16_10_done
+    sub 10
+    inc b
+    jr .pn16_10
+.pn16_10_done:
+    ld l, a
+    call .pn16_digit
+
+    ; Ones (always printed)
+    ld a, l
     add a, '0'
     ld c, a
     push hl
@@ -154,9 +191,29 @@ print_num16:
     ld hl, pr_col
     inc (hl)
     pop hl
-.pn16_tens:
-    ld a, l
-    call print_num
+
+    pop hl
+    ret
+
+; Helper: print digit in B if non-zero or if we've already printed a digit (C flag)
+.pn16_digit:
+    ld a, b
+    or a
+    jr nz, .pn16_dig_print
+    ld a, c
+    or a
+    ret z               ; still suppressing leading zeros
+.pn16_dig_print:
+    ld c, 1             ; no longer suppressing
+    ld a, b
+    add a, '0'
+    push hl
+    push bc
+    ld c, a
+    call print_char
+    ld hl, pr_col
+    inc (hl)
+    pop bc
     pop hl
     ret
 
