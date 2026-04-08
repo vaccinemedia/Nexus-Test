@@ -58,7 +58,9 @@ ay_init_title:
     ld (sfx_id), a
     ld hl, akm_song_data
     xor a
+    di
     call PLY_AKM_Init
+    ei
     ret
 
 ; ---- Main music tick (call once per frame from any state) ----
@@ -71,12 +73,16 @@ ay_tick_music:
     ret
 
 ay_tick_title_mode:
+    di
     call PLY_AKM_Play
+    ei
     ret
 
 ; ---- In-game ambient init ----
 ay_init_ambient:
+    di
     call PLY_AKM_Stop
+    ei
     call ay_mute
     ld d, 7
     ld a, %00111110

@@ -1,7 +1,7 @@
 ; RASM wrapper to pre-compile the Arkos Tracker AKM player
-; Assembled at the target address where it will be placed in the game
+; ORG is passed via -DAKM_ORG=xxxx on the RASM command line
 
-    org #93EF
+    org AKM_ORG
 
 PLY_AKM_HARDWARE_SPECTRUM = 1
 
