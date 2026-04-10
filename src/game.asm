@@ -315,31 +315,34 @@ interrogation_frame:
     ld a, RESPONSE_W
     ld (box_width), a
     call print_str_box
-    ; Set scenario row attrs
+    ; Scenario prompt attrs (all reserved scenario lines)
     ld d, RESPONSE_ROW
+    ld b, SCENARIO_LINES
+.int_scen_attr:
+    push bc
+    push de
     ld b, RESPONSE_COL
     ld e, RESPONSE_W
     ld a, ATTR_QUERY
     call set_row_attrs
-    ld d, RESPONSE_ROW + 1
-    ld b, RESPONSE_COL
-    ld e, RESPONSE_W
-    ld a, ATTR_QUERY
-    call set_row_attrs
+    pop de
+    pop bc
+    inc d
+    djnz .int_scen_attr
 .int_no_scenario:
 
     ; 5b. Expand and print response template (uses same tokens)
     call select_and_build_response  ; HL = response_buffer (expanded)
     ld a, RESPONSE_COL
     ld (pr_col), a
-    ld a, RESPONSE_ROW + 2
+    ld a, RESPONSE_REPLY_ROW
     ld (pr_row), a
     ld a, RESPONSE_W
     ld (box_width), a
     call print_str_box
 
-    ; 6. Set response area attrs (rows below scenario prompt)
-    ld d, RESPONSE_ROW + 2
+    ; 6. Set response area attrs (subject reply band)
+    ld d, RESPONSE_REPLY_ROW
 .int_rattr:
     ld a, d
     cp RESPONSE_ROW + RESPONSE_H

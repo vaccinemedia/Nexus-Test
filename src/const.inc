@@ -110,9 +110,14 @@ PORTRAIT_ROW    EQU 2
 PORTRAIT_W      EQU 8
 PORTRAIT_H      EQU 12
 RESPONSE_COL    EQU 9
-RESPONSE_ROW    EQU 3
+RESPONSE_ROW    EQU 2       ; first text row (beside portrait); was 3, +1 line for prompts
 RESPONSE_W      EQU 23
-RESPONSE_H      EQU 6
+; Rows [RESPONSE_ROW .. RESPONSE_ROW+RESPONSE_H-1] cleared as dialogue block.
+RESPONSE_H      EQU 7
+; Interrogator scenario may wrap to multiple lines; subject reply must start BELOW
+; this band or it overwrites the tail of the scenario (print_str_box has no row cap).
+SCENARIO_LINES      EQU 4
+RESPONSE_REPLY_ROW  EQU RESPONSE_ROW + SCENARIO_LINES
 QUERY_ROW       EQU 15
 STATUS_ROW      EQU 0
 MAX_QUERY_ICONS EQU 3

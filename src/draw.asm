@@ -156,14 +156,17 @@ print_num16:
 .pn16_1k_done:
     call .pn16_digit
 
-    ; Hundreds (H is now 0)
+    ; Hundreds — full 16-bit subtract (e.g. 300 = $012C needs H:L, not L alone)
     ld b, 0
 .pn16_100:
     ld a, l
-    cp 100
+    sub low 100
+    ld e, a
+    ld a, h
+    sbc a, high 100
     jr c, .pn16_100_done
-    sub 100
-    ld l, a
+    ld h, a
+    ld l, e
     inc b
     jr .pn16_100
 .pn16_100_done:

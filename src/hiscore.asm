@@ -244,15 +244,17 @@ insert_hiscore:
     ; Copy entry B to entry B+1
     push bc
     ld a, b
-    call get_hiscore_entry_ptr
-    push hl
-    pop de               ; DE = source
+    call get_hiscore_entry_ptr   ; HL = &table[B] (source)
+    push hl                      ; save source ptr (get_hiscore_entry_ptr trashes DE)
+    pop ix                       ; IX = source ptr
     pop bc
     push bc
     ld a, b
     inc a
-    call get_hiscore_entry_ptr
-    ex de, hl            ; DE = dest, HL = source
+    call get_hiscore_entry_ptr   ; HL = &table[B+1] (dest)
+    ex de, hl                    ; DE = dest
+    push ix
+    pop hl                       ; HL = source (restored from IX)
     ld bc, HISCORE_ENTRY_SZ
     ldir
     pop bc
