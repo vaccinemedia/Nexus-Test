@@ -8,13 +8,13 @@ LOADER_INC := src/loader_basic.inc
 
 .PHONY: all clean run
 
-all: $(OUTDIR)/nexus.tap $(OUTDIR)/nexus.sna
+all: $(OUTDIR)/nexus.tap
 
 $(LOADER_INC): $(LOADER_GEN)
 	python3 $(LOADER_GEN) > $(LOADER_INC)
 
 # Final build — depends on relocated song and compiled player
-$(OUTDIR)/nexus.tap $(OUTDIR)/nexus.sna: $(SRC) $(wildcard src/*.asm) $(wildcard src/*.inc) $(LOADER_INC) src/akm_player.bin src/title_music_relocated.akm
+$(OUTDIR)/nexus.tap: $(SRC) $(wildcard src/*.asm) $(wildcard src/*.inc) $(LOADER_INC) src/akm_player.bin src/title_music_relocated.akm
 	@mkdir -p $(OUTDIR)
 	$(ASM) -I src --outprefix=$(OUTDIR) $(SRC)
 
@@ -32,7 +32,7 @@ src/akm_player.bin src/title_music_relocated.akm: src/title_music.akm src/title_
 	python3 tools/relocate_akm.py src/title_music.akm src/title_music_relocated.akm $$SONG_ORG
 
 clean:
-	rm -f $(OUTDIR)/nexus.tap $(OUTDIR)/nexus.sna src/akm_player.bin src/title_music_relocated.akm
+	rm -f $(OUTDIR)/nexus.tap src/akm_player.bin src/title_music_relocated.akm
 
 run: all
 	@chmod +x scripts/run-fusex.sh 2>/dev/null || true
