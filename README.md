@@ -1,11 +1,15 @@
-# Nexus (ZX Spectrum 128K)
+# Nexus Test (ZX Spectrum 128K)
 
-Blade Runner–inspired **Voight-style interrogation** prototype: title cityscape, AY title music, five probe rounds with keys **1 / 2 / 3**, then a verdict screen. Graphics lean toward a **Captain Blood** vibe (neon attribute skyline, wireframe scan panel).
+**Android detection** interrogation game: pick probe topics on a grid, read the subject’s scenario and reply, watch Voight-style gauges, then call **HUMAN** or **ANDROID**. One hundred subjects, limited lives, scoring by speed (fewer questions = more points), high score table with initials.
+
+Homage tone (e.g. *Blade Runner*); not affiliated with any rights holders.
 
 ## Requirements
 
-- [sjasmplus](https://github.com/z00m128/sjasmplus) on `PATH`
-- A **Spectrum 128** emulator (tested target: **FuseX**). Use a **128K machine** so paging and the AY chip match the build.
+- **[sjasmplus](https://github.com/z00m128/sjasmplus)** on `PATH`
+- **Python 3** (for `tools/gen_loader.py` and `tools/relocate_akm.py`)
+- **[RASM](https://github.com/EdouardBERGE/rasm)** — the Makefile expects the binary at **`/tmp/rasm/rasm`** (build with `make -f makefile.MacOS` in the RASM tree, or adjust `RASM :=` in [`Makefile`](Makefile)). RASM compiles the Arkos Tracker **AKM** player at the correct load address; without it, run `sjasmplus` manually only if `src/akm_player.bin` and `src/title_music_relocated.akm` already exist.
+- A **Spectrum 128** emulator (e.g. **FuseX**). Use **128K** so **#7FFD** paging and the **AY-3-8912** match the build.
 
 ## Build
 
@@ -13,57 +17,73 @@ Blade Runner–inspired **Voight-style interrogation** prototype: title cityscap
 make
 ```
 
+- First run (or after `make clean`): sjasmplus is invoked to find where the AKM player sits in memory, RASM builds `src/akm_player.bin`, Python relocates `src/title_music.akm` → `src/title_music_relocated.akm` (absolute pointers), then sjasmplus links the final binary.
+
 Output:
 
-- **`out/nexus.sna`** — **use this in FuseX.** Double‑click or **File → Open**, with the machine set to **Spectrum 128**. The snapshot jumps straight to the game entry point.
-- **`out/nexus.tap`** — **standard tape**: BASIC autorun (line **10** = `CLEAR` / `LOAD ""CODE` / `RANDOMIZE USR 32768`) plus a **CODE** block at **#8000**. In FuseX (**128**), open the TAP as tape / run tape load so the loader runs (you should **not** see `0 OK, 10:4` from the old snapshot format).
-
-## Run (macOS)
+- **`out/nexus.sna`** — open in FuseX as **Spectrum 128** (recommended).
+- **`out/nexus.tap`** — BASIC loader + CODE at **#8000**.
 
 ```bash
-make run
+make run    # macOS: tries to open out/nexus.sna in FuseX
 ```
-
-This looks for `/Applications/FuseX.app`, then other Fuse variants, and opens **`nexus.sna`**.
 
 ## Troubleshooting
 
-- **Snapshot appears to hang** — older builds used **`HALT`** for frame timing; with **interrupts off** in `.sna` files that never wakes. Current builds use **`wait_frame`** in [`src/zx_sys.asm`](src/zx_sys.asm) (busy wait, no IRQ). Rebuild with `make` and open a fresh **`out/nexus.sna`**.
-- **TAP shows `0 OK, 10:4` and stops** — that was the old **snapshot TAP** (not a real loader). Rebuild; **`nexus.tap`** is now a normal **BASIC + CODE** tape. Use **Spectrum 128**, start from tape load / reset so line **10** autoloads.
+- **Snapshot “hangs”** — the main loop uses **`wait_frame`** (busy wait), not `HALT`, while the CPU runs with **interrupts disabled**; use a current build and a fresh `.sna`.
+- **TAP stops at `0 OK, 10:4`** — use the generated **`nexus.tap`** from this repo (BASIC + CODE), not an old snapshot-as-tape format.
+- **Garbled title music after changing code** — run **`make clean && make`** so the AKM player and relocated song match the new layout.
+- **`make` fails: RASM not found** — install/build RASM and point `RASM` in the Makefile, or restore `akm_player.bin` / `title_music_relocated.akm` from a successful build before using sjasmplus alone.
 
-## Play
+## How to play
 
-1. **Title** — AY loop (original-style minor pad, not a cover of any film score). Press almost any key.
-2. **Interrogation** — Five rounds. **1** calm, **2** even, **3** hard probe. **Pupil stress** (0–99) reacts; replicants spike more under pressure.
-3. **Verdict** — Threshold on stress (~52) plus hidden type decides outcome. **Any key** returns to the title.
+1. **Title** — Full-screen bitmap title; **Arkos Tracker 3** music on the AY. Subtitle and **PRESS ANY KEY**. After a timeout, the **high score** attract screen appears; any key starts a **new game** (score resets; **high score table stays in RAM** until you use a fresh snapshot or clear memory).
+2. **Level intro** — Subject number and name; key skips the short delay.
+3. **Interrogation** — Move on the **QAOP** grid; **SPACE** selects an icon (up to **three** probes per question). **ENTER** asks. **0** clears the query. Icons map to topics (memory, fear, pain, animal, child, etc.).
+4. **Readout** — A **scenario** line and a **subject response** appear in the text panel. Text is built from **templates + token pools** (noun/detail) so the answer refers to the same thing as the prompt, with variety and compact data.
+5. **Gauges** — **PUPIL** and **FLUSH** bars, **PATTERN** and **Q-WEIGHT** labels reflect the probe and subject model.
+6. **Verdict** — **H** = human, **R** = android (see on-screen legend). Correct guess: **HELL YEAH** beeper sample and **round score** (see below). Wrong: **oh no** sample and lose a **life**; at **0 lives** you go straight to **game over** with final score.
+7. **Between levels** — Verdict screen shows points for the round, **running total**, lives; key continues.
+8. **Game over / high score** — If your total qualifies, enter **three initials**; then the table is shown. Table entries are **sorted by insert position** (best at top); defaults fill unused slots until replaced.
 
-## Game mechanics (placeholder design)
+### Scoring
 
-You can replace this with your full ChatGPT spec later; the code is structured around:
+- **Base** round score: **100** points for a correct verdict.
+- **Penalty** per question already asked that level: increases with **level number** (see `get_penalty` in [`src/subjects.asm`](src/subjects.asm)).
+- Formula: **max(0, 100 − questions_asked × penalty)** added to **total** on a correct verdict; wrong verdict adds **0**.
+- All cumulative and table scores use **16-bit** values in logic and display.
 
-- **Hidden subject**: human vs replicant (RNG seed from `R` at session start).
-- **Pressure**: starts at 28; each answer applies a **signed delta** from `table_human` / `table_rep` (five rounds × three options).
-- **Outcomes**: replicant + high stress → retire; human + low stress → pass; wrong combinations → false positive / escaped replicant.
+### Audio
 
-Tables live in [`src/game.asm`](src/game.asm).
+- **Title / hiscore attract**: Arkos **AKM** player (custom `title_music.akm`), with **DI/EI** around play calls so the player’s stack tricks are IRQ-safe.
+- **In-game**: simple **AY** ambient; short **AY** clicks/chirps for UI; **beeper** PCM for win/lose stingers.
 
-## Source layout
+## Source layout (overview)
 
-| File | Role |
-|------|------|
-| `src/nexus.asm` | Entry, main loop (`HALT`), globals, strings, `SAVETAP` |
-| `src/zx_sys.asm` | 128K **#7FFD** paging check, attribute/bitmap clear |
-| `src/draw.asm` | Plot, lines, skyline, bitmap font, `print_str_bmp` |
-| `src/ay_music.asm` | AY I/O, 3-channel pattern player (50 Hz) |
-| `src/input.asm` | Keyboard matrix |
-| `src/title.asm` | Title draw + key to start |
-| `src/game.asm` | Rounds, scoring, outcome, scanner frame |
-| `src/const.inc` | Ports, colours, state IDs |
+| Area | Files |
+|------|--------|
+| Entry, loop, globals | [`src/nexus.asm`](src/nexus.asm) |
+| 128K paging, clear, `wait_frame` | [`src/zx_sys.asm`](src/zx_sys.asm) |
+| Text, fonts, `print_num16`, `print_str_box` | [`src/draw.asm`](src/draw.asm) |
+| Keys | [`src/input.asm`](src/input.asm) |
+| AY, beeper, AKM blob + song | [`src/ay_music.asm`](src/ay_music.asm) |
+| RASM wrapper for player | [`src/akm_build.asm`](src/akm_build.asm) |
+| AKM relocation | [`tools/relocate_akm.py`](tools/relocate_akm.py) |
+| Portrait drawing | [`src/portrait.asm`](src/portrait.asm) |
+| Query class, gauges, **tokens**, templates | [`src/question.asm`](src/question.asm) |
+| Subjects, penalties | [`src/subjects.asm`](src/subjects.asm) |
+| Strings, token data | [`src/data_text.asm`](src/data_text.asm) |
+| Title SCR | [`src/title.asm`](src/title.asm) |
+| States: intro, interrogation, verdict, game over | [`src/game.asm`](src/game.asm) |
+| High scores | [`src/hiscore.asm`](src/hiscore.asm) |
+| Constants, layout | [`src/const.inc`](src/const.inc) |
 
-## Music note
+## Replacing title music
 
-Playback is **native Z80** on the 128K AY. For **Arkos Tracker 2** (or similar) later, replace `ay_music.asm` with an exported player + song data and keep calling it from the same `HALT` loop.
+1. Export from **Arkos Tracker 3** as **AKM** + `*_playerconfig.asm` for this song.
+2. Replace [`src/title_music.akm`](src/title_music.akm) and [`src/title_music_playerconfig.asm`](src/title_music_playerconfig.asm).
+3. **`make clean && make`** so the song is relocated to the new load address.
 
 ## Legal
 
-Homage project only — no affiliation with Blade Runner rights holders. Replace names/art for a public release if needed.
+Homage only. Replace names, art, and any third-party music if you ship publicly.
