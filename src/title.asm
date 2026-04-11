@@ -91,8 +91,7 @@ title_frame:
     ret z
     ; Start the game
     call ay_mute
-    call start_new_game
-    ret
+    jp start_new_game        ; was CALL+RET — saves 1 byte, 17T
 
 ; The 6912-byte SCR data is included directly
 title_scr_data:

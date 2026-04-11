@@ -28,50 +28,51 @@ read_game_key:
     in a, (#fe)
     ld (kr_09876), a
 
+    ; All JP z→JR z: each saves 1 byte; +3T faster when not taken (common path), 9 total
     ld a, (kr_qwert)
     bit 0, a
     ld a, KEY_UP
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_asdfg)
     bit 0, a
     ld a, KEY_DOWN
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_poiuy)
     bit 1, a
     ld a, KEY_LEFT
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_poiuy)
     bit 0, a
     ld a, KEY_RIGHT
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_spsymnb)
     bit 0, a
     ld a, KEY_SELECT
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_entlkjh)
     bit 0, a
     ld a, KEY_ENTER
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_entlkjh)
     bit 4, a
     ld a, KEY_HUMAN
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_qwert)
     bit 3, a
     ld a, KEY_ANDROID
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     ld a, (kr_09876)
     bit 0, a
     ld a, KEY_CLEAR
-    jp z, .rgk_debounce
+    jr z, .rgk_debounce
 
     xor a
     ld (key_held), a
@@ -175,25 +176,25 @@ scan_letter:
     ld a, 'Y'
     jp z, .slet_got
 
-    ; Row #BF: ENTER L K J H
+    ; Row #BF: ENTER L K J H — JP→JR for last 4 groups (within range), 14 saves
     ld a, #bf
     in a, (#fe)
     ld b, a
     bit 0, b
     ld a, 1             ; ENTER code
-    jp z, .slet_got
+    jr z, .slet_got
     bit 1, b
     ld a, 'L'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 2, b
     ld a, 'K'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 3, b
     ld a, 'J'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 4, b
     ld a, 'H'
-    jp z, .slet_got
+    jr z, .slet_got
 
     ; Row #7F: SPACE SYM M N B
     ld a, #7f
@@ -201,13 +202,13 @@ scan_letter:
     ld b, a
     bit 2, b
     ld a, 'M'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 3, b
     ld a, 'N'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 4, b
     ld a, 'B'
-    jp z, .slet_got
+    jr z, .slet_got
 
     ; Row #FE: SHIFT Z X C V
     ld a, #fe
@@ -215,16 +216,16 @@ scan_letter:
     ld b, a
     bit 1, b
     ld a, 'Z'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 2, b
     ld a, 'X'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 3, b
     ld a, 'C'
-    jp z, .slet_got
+    jr z, .slet_got
     bit 4, b
     ld a, 'V'
-    jp z, .slet_got
+    jr z, .slet_got
 
     ; Row #EF: 0 key = DELETE
     ld a, #ef
@@ -232,7 +233,7 @@ scan_letter:
     ld b, a
     bit 0, b
     ld a, 2             ; DELETE code
-    jp z, .slet_got
+    jr z, .slet_got
 
     ; No key pressed
     xor a

@@ -32,7 +32,7 @@ src/akm_player.bin src/title_music_relocated.akm: src/title_music.akm src/title_
 	python3 tools/relocate_akm.py src/title_music.akm src/title_music_relocated.akm $$SONG_ORG
 
 clean:
-	rm -f $(OUTDIR)/nexus.tap src/akm_player.bin src/title_music_relocated.akm
+	rm -f $(OUTDIR)/nexus.tap $(OUTDIR)/nexus.sna src/akm_player.bin src/title_music_relocated.akm
 
 run: all
 	@chmod +x scripts/run-fusex.sh 2>/dev/null || true

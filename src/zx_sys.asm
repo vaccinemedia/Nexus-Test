@@ -12,14 +12,14 @@ video_home_128:
 ; --- Paging proof: #C000 bank 0 vs bank 1 ---
 verify_paging:
     ld bc, #7ffd
-    ld a, 0
+    xor a                    ; was LD A,0 — saves 1 byte, 3T
     out (c), a
     ld hl, #c000
     ld (hl), #a5
     ld a, 1
     out (c), a
     ld (hl), #5a
-    ld a, 0
+    xor a                    ; was LD A,0 — saves 1 byte, 3T
     out (c), a
     ld a, (hl)
     cp #a5
@@ -29,7 +29,7 @@ verify_paging:
     ld a, (hl)
     cp #5a
     jr nz, vp_fail
-    ld a, 0
+    xor a                    ; was LD A,0 — saves 1 byte, 3T
     out (c), a
     ld a, 1
     ld (paging_ok), a
@@ -37,26 +37,19 @@ verify_paging:
 vp_fail:
     xor a
     ld (paging_ok), a
-    ld a, 0
-    out (c), a
+    out (c), a               ; A already 0 from XOR A — saves 1 byte, 3T
     ret
 
 ; A = attribute byte — fill 32x24, clear bitmap
+; Rewritten: LDIR cascade replaces nested loop — saves ~5,269T per call, 4 bytes
 clear_screen_attrs:
     ld hl, ATTR_BASE
-    ld c, 24
-cs_row:
-    ld b, 32
-    push hl
-cs_col:
     ld (hl), a
-    inc hl
-    djnz cs_col
-    pop hl
-    ld de, 32
-    add hl, de
-    dec c
-    jr nz, cs_row
+    ld d, h
+    ld e, l
+    inc de
+    ld bc, 767
+    ldir
     ld hl, PIX_BASE
     ld de, PIX_BASE+1
     ld bc, 6143

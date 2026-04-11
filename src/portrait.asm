@@ -97,8 +97,7 @@ draw_portrait:
     srl a
     srl a
     srl a
-    and 3
-    cp 0
+    and 3                    ; Z flag already set if result=0 — CP 0 removed, saves 2 bytes, 7T
     jr z, .dp_hair_bald
     cp 1
     jr z, .dp_hair_short

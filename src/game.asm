@@ -81,18 +81,16 @@ level_intro_frame:
     ld (flush_gauge), a
     ld (pattern_flag), a
     ld (blink_timer), a
-    ld a, ICON_NONE
-    ld (query_icons), a
-    ld (query_icons+1), a
-    ld (query_icons+2), a
-    ; Clear prev gauge history
-    xor a
-    ld (prev_pupil), a
+    ld (prev_pupil), a       ; reordered: zero-stores grouped to eliminate second XOR A — saves 1 byte, 4T
     ld (prev_pupil+1), a
     ld (prev_pupil+2), a
     ld (prev_flush), a
     ld (prev_flush+1), a
     ld (prev_flush+2), a
+    ld a, ICON_NONE
+    ld (query_icons), a
+    ld (query_icons+1), a
+    ld (query_icons+2), a
     ; Set current_subj pointer
     call get_subject_ptr
     ld (current_subj), hl
@@ -245,7 +243,7 @@ interrogation_frame:
     ld hl, query_icons
     add hl, de
     ld (hl), b
-    ld a, (query_count)
+                             ; A still = query_count — redundant reload removed, saves 3 bytes, 13T
     inc a
     ld (query_count), a
     ; SFX
@@ -306,7 +304,7 @@ interrogation_frame:
     ld a, (query_icons)
     cp ICON_NONE
     jr z, .int_no_scenario
-    ld a, (query_icons)
+                             ; A still = (query_icons) after CP — redundant reload removed, saves 3 bytes, 13T
     call pick_and_expand_scenario  ; HL = response_buffer (expanded)
     ld a, RESPONSE_COL
     ld (pr_col), a
@@ -795,8 +793,7 @@ draw_status_bar:
     ld b, 0
     ld e, 32
     ld a, ATTR_STATUS
-    call set_row_attrs
-    ret
+    jp set_row_attrs         ; was CALL+RET — saves 1 byte, 17T
 
 ; --- Icon labels (text) ---
 draw_icon_labels:
@@ -901,7 +898,7 @@ draw_query_strip:
     ld c, 1
     call clear_text_rect
     ; "QUERY:"
-    ld a, 0
+    xor a                    ; was LD A,0 — saves 1 byte, 3T
     ld (pr_col), a
     ld a, QUERY_ROW
     ld (pr_row), a
@@ -967,8 +964,7 @@ draw_query_strip:
     ld b, 0
     ld e, 32
     ld a, ATTR_QUERY
-    call set_row_attrs
-    ret
+    jp set_row_attrs         ; was CALL+RET — saves 1 byte, 17T
 
 ; --- Clear response text area ---
 clear_response_area:

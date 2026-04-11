@@ -27,8 +27,7 @@ ay_mute:
     djnz .am_lp
     ld d, 7
     ld a, #ff
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 ; ---- Music mode: 0=off, 1=title, 2=ambient ----
 music_mode:   db 0
@@ -164,15 +163,14 @@ sfx_start_click:
     ld a, #40
     call ay_out
     ld d, 5
-    ld a, #00
+    xor a                    ; was LD A,#00 — saves 1 byte, 3T
     call ay_out
     ld d, 10
     ld a, 12
     call ay_out
     ld d, 7
     ld a, %00111000
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 sfx_start_chirp:
     ld a, 4
@@ -181,21 +179,20 @@ sfx_start_chirp:
     ld a, #80
     call ay_out
     ld d, 5
-    ld a, #00
+    xor a                    ; was LD A,#00 — saves 1 byte, 3T
     call ay_out
     ld d, 10
     ld a, 14
     call ay_out
     ld d, 7
     ld a, %00111000
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 sfx_start_ask:
     ld a, 8
     ld (sfx_timer), a
     ld d, 2
-    ld a, #00
+    xor a                    ; was LD A,#00 — saves 1 byte, 3T
     call ay_out
     ld d, 3
     ld a, #02
@@ -205,8 +202,7 @@ sfx_start_ask:
     call ay_out
     ld d, 7
     ld a, %00110100
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 sfx_start_correct:
     ld a, 16
@@ -231,8 +227,7 @@ sfx_start_correct:
     call ay_out
     ld d, 7
     ld a, %00111000
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 sfx_start_wrong:
     ; Harsh descending two-tone alarm with noise burst
@@ -266,8 +261,7 @@ sfx_start_wrong:
     ; Mixer: enable tones B+C and noise on C
     ld d, 7
     ld a, %00001000
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 ; ===============================================================
 ; Beeper 1-bit PCM sample playback
@@ -365,8 +359,7 @@ ay_tick_sfx:
 .sfx_restore_ambient:
     ld d, 7
     ld a, %00111110
-    call ay_out
-    ret
+    jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 ; ===============================================================
 ; Arkos Tracker 3 — AKM minimalist player (pre-compiled with RASM)
@@ -374,6 +367,10 @@ ay_tick_sfx:
 ;        PLY_AKM_Play = akm_player + 3
 ;        PLY_AKM_Stop = akm_player + 6
 ; ===============================================================
+; AKM player binary is position-dependent (compiled by RASM for a fixed address).
+; Pad to lock it at #93F8 so internal jumps stay valid after code size changes.
+    ASSERT $ <= #93F8, "Code grew past AKM player address — rebuild akm_player.bin with RASM"
+    DS #93F8 - $, 0
     DISPLAY "AKM_PLAYER_ORG: ", $
 akm_player:
     INCBIN "akm_player.bin"

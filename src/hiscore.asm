@@ -49,8 +49,7 @@ hiscore_frame:
     call ay_mute
     xor a
     ld (screen_drawn), a
-    call start_new_game
-    ret
+    jp start_new_game        ; was CALL+RET — saves 1 byte, 17T
 
 ; ===============================================================
 ; Draw high score table screen
@@ -118,16 +117,7 @@ draw_hiscore_screen:
     ; Get entry pointer: hiscore_table + index * 5
     pop bc
     push bc
-    ld a, c
-    ld l, a
-    ld h, 0
-    add hl, hl
-    add hl, hl
-    add hl, hl          ; *8... no, need *5
-    ; Redo: HL = c * 5
-    pop bc
-    push bc
-    ld a, c
+    ld a, c              ; dead *8 code removed — saves 10 bytes, ~65T
     ld l, a
     ld h, 0
     ld d, h
@@ -426,8 +416,7 @@ hiscore_entry_frame:
     add hl, de
     ld (hl), '.'
 
-    call draw_initial_entry
-    ret
+    jp draw_initial_entry    ; was CALL+RET — saves 1 byte, 17T
 
 .hef_auto_confirm:
     ; Brief pause so the player sees the 3rd letter

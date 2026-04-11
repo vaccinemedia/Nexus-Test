@@ -138,7 +138,6 @@ GameCodeEnd:
     INCLUDE "loader_basic.inc"
 LoaderBasicLen EQU LoaderBasicEnd - LoaderBasic
 
-    SAVESNA "nexus.sna", Entry
     EMPTYTAP "nexus.tap"
     SAVETAP "nexus.tap", BASIC, "nexus", LoaderBasic, LoaderBasicLen, 10
     SAVETAP "nexus.tap", CODE, "nexus", Entry, GameCodeEnd - Entry, #8000

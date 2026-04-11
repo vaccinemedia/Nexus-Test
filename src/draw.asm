@@ -54,14 +54,37 @@ print_char:
     ld e, a
     ld d, b
 
-    ; Write 8 font bytes; inc D moves to next pixel row (+256)
-    ld b, 8
-.pc_lp:
+    ; Write 8 font bytes, fully unrolled — saves 109T per character (+22 bytes)
     ld a, (hl)
     ld (de), a
     inc hl
     inc d
-    djnz .pc_lp
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    ld a, (hl)
+    ld (de), a
 
     pop hl
     pop de

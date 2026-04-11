@@ -319,19 +319,52 @@ cg_temp:       DB 0
 ; For inputs 0-100, result is 0-39 — good for gauge range 0-32.
 ; Inputs: A, B. Returns A. Clobbers HL, DE, B.
 ; ================================================================
+; Fully unrolled — saves 106T per call (+33 bytes)
 mul8_hi:
     ld d, 0
     ld e, b
     ld h, d
     ld l, d
-    ld b, 8
-.m8_lp:
     add hl, hl
     add a, a
-    jr nc, .m8_no
+    jr nc, .m8_1
     add hl, de
-.m8_no:
-    djnz .m8_lp
+.m8_1:
+    add hl, hl
+    add a, a
+    jr nc, .m8_2
+    add hl, de
+.m8_2:
+    add hl, hl
+    add a, a
+    jr nc, .m8_3
+    add hl, de
+.m8_3:
+    add hl, hl
+    add a, a
+    jr nc, .m8_4
+    add hl, de
+.m8_4:
+    add hl, hl
+    add a, a
+    jr nc, .m8_5
+    add hl, de
+.m8_5:
+    add hl, hl
+    add a, a
+    jr nc, .m8_6
+    add hl, de
+.m8_6:
+    add hl, hl
+    add a, a
+    jr nc, .m8_7
+    add hl, de
+.m8_7:
+    add hl, hl
+    add a, a
+    jr nc, .m8_8
+    add hl, de
+.m8_8:
     ld a, h
     ret
 
