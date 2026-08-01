@@ -68,6 +68,10 @@ ml_noop:
     INCLUDE "glitch.asm"
     INCLUDE "mirror.asm"
     INCLUDE "ay_music.asm"
+    ; The two blocks below intentionally live AFTER the AKM song data so
+    ; they don't push the pre-#93F8 code past the fixed player address.
+    INCLUDE "glitch_effects.asm"
+    INCLUDE "ay_outro.asm"
     INCLUDE "portrait.asm"
     INCLUDE "question.asm"
     INCLUDE "subjects.asm"
@@ -115,21 +119,22 @@ query_icons       EQU rng_seed + 2                 ; 3 bytes; ICON_NONE set by s
 token_noun        EQU query_icons + 3              ; DW
 token_detail      EQU token_noun + 2               ; DW
 attract_timer     EQU token_detail + 2             ; DW; zeroed on entry to title/hiscore
-; Four subtle-glitch trigger levels, one per effect kind so every
-; playthrough sees each subtle variant exactly once.
-sub_lvl_attr      EQU attract_timer + 2            ; kind 0 (attr corruption)
-sub_lvl_gauge     EQU sub_lvl_attr + 1             ; kind 1 (pupil gauge spike)
-sub_lvl_ghost     EQU sub_lvl_gauge + 1            ; kind 2 (ghost text word)
-sub_lvl_border    EQU sub_lvl_ghost + 1            ; kind 3 (border ripple)
-sub_done_bits     EQU sub_lvl_border + 1           ; bitmask; bit N set once kind N has fired
-glitch_level_2    EQU sub_done_bits + 1
+; Continuous subtle-glitch scheduler:
+; glitch_wait_timer counts down each idle interrogation frame; when it
+; hits zero we fire a random effect kind and re-arm. The re-arm range
+; scales with level_num so glitches ramp from sparse (early) to almost
+; every frame in the last block of interrogations.
+glitch_wait_timer EQU attract_timer + 2            ; DW frames to next fire
+wake_up_forced    EQU glitch_wait_timer + 2        ; bit0 set once the guaranteed WAKE UP has fired
+glitch_level_2    EQU wake_up_forced + 1
 glitch_level_3    EQU glitch_level_2 + 1
 glitch_done_2     EQU glitch_level_3 + 1
 glitch_done_3     EQU glitch_done_2 + 1
 subtle_timer      EQU glitch_done_3 + 1
 subtle_kind       EQU subtle_timer + 1
 subtle_state      EQU subtle_kind + 1
-is_mirror_level   EQU subtle_state + 1
+ghost_force_idx   EQU subtle_state + 1             ; 0 = random ghost word, N = force ghost_words[N-1]
+is_mirror_level   EQU ghost_force_idx + 1
 crash_phase       EQU is_mirror_level + 1
 crash_timer       EQU crash_phase + 1              ; DW
 type_ptr          EQU crash_timer + 2              ; DW
@@ -144,6 +149,7 @@ mirror_line_idx   EQU mirror_gauge_t + 1
 mirror_line_ptr   EQU mirror_line_idx + 1          ; DW
 mirror_ask_idx    EQU mirror_line_ptr + 2
 type_start_col    EQU mirror_ask_idx + 1
+glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font swap
 
 ; High score table (10 entries: 3 chars initials + 2 bytes score = 5 bytes each)
 hiscore_table:
@@ -338,24 +344,28 @@ mirror_lines:
 ; Deckard self-doubt fragments — printed when the player uses ASK
 ; on the mirror level. Rotates via mirror_ask_idx.
 ; ------------------------------------------------------------
-MIRROR_ASK_COUNT EQU 8
+MIRROR_ASK_COUNT EQU 16
 mirror_ask_lines:
-    DW mar_line_0
-    DW mar_line_1
-    DW mar_line_2
-    DW mar_line_3
-    DW mar_line_4
-    DW mar_line_5
-    DW mar_line_6
-    DW mar_line_7
-mar_line_0: DB "I DON'T KNOW WHAT I AM ANYMORE.",0
-mar_line_1: DB "I REMEMBER A UNICORN.",0
-mar_line_2: DB "TOO BAD SHE WON'T LIVE. BUT WHO DOES?",0
-mar_line_3: DB "MEMORIES. YOU'RE TALKING ABOUT MEMORIES.",0
-mar_line_4: DB "IS THIS EMPATHY OR SIMULATION?",0
-mar_line_5: DB "MAYBE I'M A REPLICANT WHO NEVER KNEW.",0
-mar_line_6: DB "SHE WOULDN'T LIVE. NEITHER WILL I.",0
-mar_line_7: DB "THE QUESTION IS THE ANSWER.",0
+    DW mar_line_0,  mar_line_1,  mar_line_2,  mar_line_3
+    DW mar_line_4,  mar_line_5,  mar_line_6,  mar_line_7
+    DW mar_line_8,  mar_line_9,  mar_line_10, mar_line_11
+    DW mar_line_12, mar_line_13, mar_line_14, mar_line_15
+mar_line_0:  DB "I DON'T KNOW WHAT I AM ANYMORE.",0
+mar_line_1:  DB "I REMEMBER A UNICORN.",0
+mar_line_2:  DB "TOO BAD SHE WON'T LIVE. BUT WHO DOES?",0
+mar_line_3:  DB "MEMORIES. YOU'RE TALKING ABOUT MEMORIES.",0
+mar_line_4:  DB "IS THIS EMPATHY OR SIMULATION?",0
+mar_line_5:  DB "MAYBE I'M A REPLICANT WHO NEVER KNEW.",0
+mar_line_6:  DB "SHE WOULDN'T LIVE. NEITHER WILL I.",0
+mar_line_7:  DB "THE QUESTION IS THE ANSWER.",0
+mar_line_8:  DB "I'VE SEEN THINGS. I'M NOT SURE WHOSE.",0
+mar_line_9:  DB "MORE HUMAN THAN HUMAN. WHAT DOES THAT LEAVE ME?",0
+mar_line_10: DB "IS THIS A TEST? WHOSE TEST?",0
+mar_line_11: DB "MY IMPLANTS FEEL WARM.",0
+mar_line_12: DB "I DREAM IN 8-BIT COLOUR.",0
+mar_line_13: DB "TIME TO DIE. WHOSE TIME?",0
+mar_line_14: DB "IF I ANSWER... DO I FAIL?",0
+mar_line_15: DB "THE MIRROR ASKS BACK.",0
 
 GlitchStringsEnd:
 GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart

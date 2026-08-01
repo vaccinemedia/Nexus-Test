@@ -45,11 +45,12 @@ check_glitch_trigger:
 
 ; =================================================================
 ; schedule_subtle_glitch — called once when interrogation first draws.
-; Never fires on the mirror level. Checks the current level against
-; the four per-kind trigger levels rolled at start_new_game, so each
-; effect kind fires exactly once per playthrough (attr / gauge /
-; ghost / border) on a different level.
-; sub_done_bits bit N = kind N has already fired.
+; Primes the continuous scheduler for this level. Never fires
+; on the mirror level (level 25 has its own show).
+;
+; On WAKE_UP_LEVEL we FORCE the guaranteed WAKE UP ghost text so every
+; playthrough hits the payoff moment at least once. Subsequent glitches
+; are randomised.
 ; =================================================================
 schedule_subtle_glitch:
     xor a
@@ -58,64 +59,127 @@ schedule_subtle_glitch:
     ld a, (is_mirror_level)
     or a
     ret nz
+    ; Guaranteed WAKE UP moment on WAKE_UP_LEVEL.
+    ld a, (wake_up_forced)
+    or a
+    jr nz, .ssg_rearm
     ld a, (level_num)
-    ld c, a                          ; C = current level
-    ld a, (sub_done_bits)
-    ld d, a                          ; D = done bitmask
-    ; Walk the sub_lvl_* table (4 contiguous bytes). B = kind, E = 1<<kind.
-    ld hl, sub_lvl_attr
-    ld b, 0
-    ld e, 1
-.ssg_lp:
-    ld a, d
-    and e
-    jr nz, .ssg_next                 ; already fired this kind
-    ld a, (hl)
-    cp c
-    jr z, .ssg_hit
-.ssg_next:
-    inc hl
-    inc b
-    sla e
-    ld a, b
-    cp 4
-    jr c, .ssg_lp
-    ret                              ; no trigger matched this level
-.ssg_hit:
-    ld a, b
+    cp WAKE_UP_LEVEL
+    jr nz, .ssg_rearm
+    ; Force ghost kind + point ghost picker at gw_wake specifically.
+    ld a, 1
+    ld (wake_up_forced), a
+    ld a, GK_GHOST
     ld (subtle_kind), a
-    ld a, d
-    or e
-    ld (sub_done_bits), a
-    ; Delay 60..179 frames (1.2s..3.6s) before firing
-    call rng_tick
-    and #7f
-    add a, 60
+    ld a, GHOST_FORCE_WAKE
+    ld (ghost_force_idx), a
+    ld a, 30                         ; ~0.6s until it fires
     ld (subtle_timer), a
+    xor a
+    ld (subtle_state), a
+    jp set_wait_from_level           ; seed wait timer for any follow-up glitches
+                                      ; on this level (mid cadence at level 5)
+.ssg_rearm:
+    xor a
+    ld (ghost_force_idx), a          ; no forced word
+    call set_wait_from_level         ; seed the next-fire timer
+    ret
+
+; -----------------------------------------------------------------
+; set_wait_from_level — writes (glitch_wait_timer) with a random
+; countdown scaled by (level_num). Called both at interrogation
+; entry and after each glitch fires.
+;
+;   Early (level 1-10)   : 300..555 frames  (~6..11s)
+;   Mid   (level 11-20)  : 120..375 frames  (~2.4..7.5s)
+;   Late  (level 21-24)  : 40..167 frames   (~0.8..3.4s)
+; -----------------------------------------------------------------
+set_wait_from_level:
+    ld a, (level_num)
+    cp GLITCH_MID_LEVEL
+    jr c, .swfl_early
+    cp GLITCH_LATE_LEVEL
+    jr c, .swfl_mid
+.swfl_late:
+    call rng_tick
+    and #7F
+    add a, 40
+    ld l, a
+    ld h, 0
+    jr .swfl_save
+.swfl_mid:
+    call rng_tick
+    ld l, a
+    ld h, 0
+    ld de, 120
+    add hl, de
+    jr .swfl_save
+.swfl_early:
+    call rng_tick
+    ld l, a
+    ld h, 0
+    ld de, 300
+    add hl, de
+.swfl_save:
+    ld (glitch_wait_timer), hl
     ret
 
 ; =================================================================
 ; tick_subtle_glitch — called every interrogation frame.
-; When the timer hits zero, dispatches to one of three effects.
-; Some effects re-queue themselves (via subtle_state) to run a
-; multi-frame animation (e.g. spike-then-restore).
+;
+; Two paths:
+;   1) An effect is currently animating (subtle_timer > 0): tick it,
+;      dispatching to the effect handler when the internal timer
+;      elapses. Effects can re-queue themselves via subtle_state for
+;      multi-frame animations.
+;   2) Idle: decrement the wait timer; when it hits zero we roll a
+;      random effect kind, arm it, and re-seed the wait timer.
 ; =================================================================
 tick_subtle_glitch:
     ld a, (subtle_timer)
     or a
-    ret z
+    jr z, .tsg_idle
     dec a
     ld (subtle_timer), a
     ret nz
     ; Timer just hit zero — dispatch on effect kind.
     ld a, (subtle_kind)
+    add a, a
+    ld e, a
+    ld d, 0
+    ld hl, subtle_dispatch
+    add hl, de
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    jp (hl)
+.tsg_idle:
+    ld a, (is_mirror_level)
     or a
-    jp z, subtle_attr_corrupt
-    dec a
-    jp z, subtle_gauge_spike
-    dec a
-    jp z, subtle_ghost_text
-    jp subtle_border_ripple
+    ret nz                            ; mirror level: no subtle glitches
+    ld hl, (glitch_wait_timer)
+    ld a, h
+    or l
+    ret z                             ; not primed yet
+    dec hl
+    ld (glitch_wait_timer), hl
+    ld a, h
+    or l
+    ret nz
+    ; Wait timer elapsed — fire a random glitch and re-arm.
+    call pick_random_glitch_kind
+    ld (subtle_kind), a
+    xor a
+    ld (subtle_state), a
+    ld a, 15                          ; ~0.3s pre-roll before the effect
+    ld (subtle_timer), a
+    jp set_wait_from_level
+
+; The random-kind picker, dispatch table, weight table and effect
+; handlers 4..7 live in glitch_effects.asm so they land AFTER the
+; AKM song data (there's 1.8 KB of headroom there). This keeps the
+; pre-#93F8 region small enough for the position-dependent player.
 
 ; ----- Effect 0: portrait attribute corruption (single flash) -----
 subtle_attr_corrupt:
@@ -176,22 +240,47 @@ subtle_gauge_spike:
 .sgs_restore:
     ld a, (questions_asked)
     or a
-    jp nz, draw_pupil_gauge
+    jr nz, .sgs_redraw
     ; No question yet: paint bar back to default cyan-black
     ld d, PUPIL_ROW
     ld b, GAUGE_BAR_COL
     ld e, GAUGE_BAR_W
     ld a, INK_CYAN + (INK_BLACK*8)
-    jp set_row_attrs
+    call set_row_attrs
+    jr .sgs_done
+.sgs_redraw:
+    call draw_pupil_gauge
+.sgs_done:
+    xor a
+    ld (subtle_state), a             ; effect finished, scheduler can pick next
+    ret
 
 ; ----- Effect 2: ghost text (word appears in response area) -----
-; Two-phase: first hit prints the word, second clears it.
+; Two-phase: first hit prints the word (FLASH+BRIGHT for max
+; attention), second hit clears it.
+;
+; ghost_force_idx allows the scheduler to force a specific word
+; (index+1, 0 = random). Used by the WAKE_UP_LEVEL guaranteed event.
+GHOST_ATTR   EQU %11000111        ; FLASH+BRIGHT+INK_WHITE on PAPER_BLACK
+GHOST_DWELL  EQU 250               ; ~5s dwell so it can't be missed
 subtle_ghost_text:
     ld a, (subtle_state)
     or a
     jr nz, .sgt_clear
+    ; Pick word: forced index if set, otherwise random 0..7
+    ld a, (ghost_force_idx)
+    or a
+    jr nz, .sgt_forced
     call rng_tick
     and 7
+    jr .sgt_have_idx
+.sgt_forced:
+    dec a                            ; convert 1-based -> 0-based
+    ld c, a                          ; save index across the flag clear
+    xor a
+    ld (ghost_force_idx), a          ; consume the one-shot force
+    ld a, c
+.sgt_have_idx:
     add a, a
     ld e, a
     ld d, 0
@@ -208,12 +297,24 @@ subtle_ghost_text:
     ld (pr_row), a
     pop hl
     call print_str
-    ld a, 100                        ; ~2s dwell so the word actually registers
+    ; Repaint the printed area with FLASH+BRIGHT so it strobes and demands attention.
+    ld d, RESPONSE_REPLY_ROW
+    ld b, RESPONSE_COL + 8
+    ld e, 10                         ; ghost words never exceed 10 chars
+    ld a, GHOST_ATTR
+    call set_row_attrs
+    ld a, GHOST_DWELL
     ld (subtle_timer), a
     ld a, 1
     ld (subtle_state), a
     ret
 .sgt_clear:
+    ; Kill the flashing attribute band, then blank the text cells.
+    ld d, RESPONSE_REPLY_ROW
+    ld b, RESPONSE_COL + 8
+    ld e, 10
+    ld a, INK_WHITE
+    call set_row_attrs
     ld a, RESPONSE_COL + 8
     ld (pr_col), a
     ld a, RESPONSE_REPLY_ROW
@@ -227,6 +328,8 @@ subtle_ghost_text:
     inc (hl)
     pop bc
     djnz .sgt_clr_lp
+    xor a
+    ld (subtle_state), a             ; leave effect fully idle
     ret
 
 ghost_words:

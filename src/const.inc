@@ -23,24 +23,24 @@ ST_GLITCH_MED   EQU 7
 ST_GLITCH_CRASH EQU 8
 ST_MIRROR_END   EQU 9
 
-; Glitch trigger windows (level number ranges)
-; Med (Deckard fragment) and crash (fake BASIC boot) tiers use one
-; window each. Subtle glitches are split into four windows, one per
-; effect kind (attr / gauge / ghost / border), so every playthrough
-; sees every subtle variant once. Chosen to avoid the med + crash
-; windows and the level 1 tutorial and level 25 mirror finale.
-SUB_ATTR_LO     EQU 2                             ; kind 0 (attr corrupt)
-SUB_ATTR_HI     EQU 4
-SUB_GHOST_LO    EQU 6                             ; kind 2 (ghost text word)
-SUB_GHOST_HI    EQU 9
+; Glitch trigger windows (level number ranges).
+; Subtle glitches use a continuous scheduler that ramps with level so
+; there's no per-kind window. Only the med (Deckard fragment) and
+; crash (fake BASIC boot) tiers still roll a specific level.
 GLITCH2_LO      EQU 10
 GLITCH2_HI      EQU 14
-SUB_BORDER_LO   EQU 15                            ; kind 3 (border ripple)
-SUB_BORDER_HI   EQU 16
 GLITCH3_LO      EQU 17
 GLITCH3_HI      EQU 20
-SUB_GAUGE_LO    EQU 22                            ; kind 1 (pupil gauge spike)
-SUB_GAUGE_HI    EQU 24
+; Threshold levels for the subtle-glitch cadence ramp. Wait times
+; between fires get shorter as level_num crosses each threshold.
+GLITCH_MID_LEVEL  EQU 11                          ; level >= 11 uses "mid" cadence
+GLITCH_LATE_LEVEL EQU 21                          ; level >= 21 uses "late" cadence
+; Level at which the guaranteed WAKE UP ghost text fires (if the
+; scheduler hasn't already picked it earlier).
+WAKE_UP_LEVEL     EQU 5
+; Index (1-based) of "WAKE UP" inside ghost_words; ghost_force_idx uses
+; this value to override the random word picker.
+GHOST_FORCE_WAKE  EQU 2                            ; ghost_words[1] = gw_wake
 
 ; Ink colours (bits 0-2)
 INK_BLACK       EQU 0

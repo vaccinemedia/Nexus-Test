@@ -515,42 +515,10 @@ start_new_game:
     ld hl, icon_labels
     ld (active_labels_ptr), hl
 
-    ; Roll six glitch trigger levels: four subtle windows (one per
-    ; effect kind so every playthrough sees each subtle variant), one
-    ; med window, one crash window. All rolls fall inside pre-vetted
-    ; per-window ranges that don't overlap the tutorial or finale.
-    ; Subtle window 1: attr corrupt (SUB_ATTR_LO..SUB_ATTR_HI, 3 wide)
-    call rng_tick
-    and 3
-.sng_roll_a:
-    cp 3
-    jr c, .sng_roll_a_ok
-    sub 3
-    jr .sng_roll_a
-.sng_roll_a_ok:
-    add a, SUB_ATTR_LO
-    ld (sub_lvl_attr), a
-    ; Subtle window 2: ghost text (SUB_GHOST_LO..SUB_GHOST_HI, 4 wide)
-    call rng_tick
-    and 3
-    add a, SUB_GHOST_LO
-    ld (sub_lvl_ghost), a
-    ; Subtle window 3: border ripple (SUB_BORDER_LO..SUB_BORDER_HI, 2 wide)
-    call rng_tick
-    and 1
-    add a, SUB_BORDER_LO
-    ld (sub_lvl_border), a
-    ; Subtle window 4: gauge spike (SUB_GAUGE_LO..SUB_GAUGE_HI, 3 wide)
-    call rng_tick
-    and 3
-.sng_roll_g:
-    cp 3
-    jr c, .sng_roll_g_ok
-    sub 3
-    jr .sng_roll_g
-.sng_roll_g_ok:
-    add a, SUB_GAUGE_LO
-    ld (sub_lvl_gauge), a
+    ; Roll two tier-based glitch trigger levels (med + crash).
+    ; Subtle-tier glitches are now driven by a continuous scheduler in
+    ; glitch.asm rather than a fixed roll, so we only need to reset its
+    ; state here.
     ; Med window: GLITCH2_LO..GLITCH2_HI (5 wide: 10..14)
     call rng_tick
     and 7
@@ -567,11 +535,12 @@ start_new_game:
     and 3
     add a, GLITCH3_LO
     ld (glitch_level_3), a
-    ; Reset fired flags: subtle uses one bitmask (bit N = kind N fired)
     xor a
-    ld (sub_done_bits), a
     ld (glitch_done_2), a
     ld (glitch_done_3), a
+    ld (wake_up_forced), a
+    ld hl, 0
+    ld (glitch_wait_timer), hl
     ld (is_mirror_level), a
 
     ; Prepare subject for level 1

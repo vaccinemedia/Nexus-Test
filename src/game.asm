@@ -129,8 +129,9 @@ interrogation_frame:
     ld a, (is_mirror_level)
     or a
     call nz, mirror_apply_interrogation
-    ; Arm the tier-1 subtle glitch if this level matches one of the
-    ; four kind-specific sub_lvl_* triggers (attr/gauge/ghost/border).
+    ; Prime the continuous subtle-glitch scheduler for this
+    ; interrogation. Fires with increasing frequency the closer we get
+    ; to level 25 so unease compounds towards the mirror finale.
     call schedule_subtle_glitch
     ld a, 1
     ld (screen_drawn), a
