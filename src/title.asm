@@ -93,6 +93,100 @@ title_frame:
     call ay_mute
     jp start_new_game        ; was CALL+RET — saves 1 byte, 17T
 
+; =================================================================
+; ST_INTRO — Blade-Runner-style opening crawl.
+; Phase 0: mute music, wipe screen to black, prime the type engine.
+; Phase 1: type intro_text one character at a time (~60ms/char).
+; Phase 2: hold the completed screen for INTRO_HOLD_FRAMES so the
+;          player can read it (any key skips the hold).
+; Phase 3: transition to ST_LEVEL_INTRO for interrogation 1.
+; The intro_text lives in bank 5 alongside the other glitch strings.
+; =================================================================
+INTRO_HOLD_FRAMES EQU 200                          ; ~4s auto-advance
+INTRO_TYPE_DELAY  EQU 2                            ; ~40ms per character
+INTRO_START_COL   EQU 4
+INTRO_START_ROW   EQU 6
+INTRO_ATTR        EQU INK_CYAN + (INK_BLACK*8) + BRIGHT
+
+intro_frame:
+    ld a, (intro_phase)
+    or a
+    jr z, .intr_p0
+    cp 1
+    jr z, .intr_p1
+    cp 2
+    jr z, .intr_p2
+    ; Phase 3 — exit to ST_LEVEL_INTRO. Reset screen_drawn so the
+    ; level intro re-renders cleanly.
+    xor a
+    ld (screen_drawn), a
+    ld a, ST_LEVEL_INTRO
+    ld (game_state), a
+    ret
+
+.intr_p0:
+    call ay_mute
+    call use_rom_font                    ; ensure crisp readable font
+    xor a
+    call clear_screen_attrs              ; full black wipe (paper black, ink black)
+    ; Prime type_engine pointing at intro_text.
+    ld hl, intro_text
+    ld (type_ptr), hl
+    ld a, INTRO_START_COL
+    ld (type_start_col), a
+    ld (type_col), a
+    ld a, INTRO_START_ROW
+    ld (type_row), a
+    xor a
+    ld (type_timer), a
+    ; Paint the readable band cyan-on-black so typed chars are visible.
+    ld d, INTRO_START_ROW
+    ld e, 12                             ; 12 rows of text area
+.intr_attr_lp:
+    push de
+    ld b, 0
+    ld e, 32
+    ld a, INTRO_ATTR
+    call set_row_attrs
+    pop de
+    inc d
+    dec e
+    jr nz, .intr_attr_lp
+    ld a, 1
+    ld (intro_phase), a
+    ret
+
+.intr_p1:
+    ; Let the user skip the whole intro with any key.
+    call read_any_key
+    or a
+    jr nz, .intr_skip
+    ld a, INTRO_TYPE_DELAY
+    call type_engine
+    ret nz                                ; still typing
+    ; Type engine hit the null terminator — enter hold phase.
+    ld hl, INTRO_HOLD_FRAMES
+    ld (intro_hold), hl
+    ld a, 2
+    ld (intro_phase), a
+    ret
+
+.intr_p2:
+    call read_any_key
+    or a
+    jr nz, .intr_skip
+    ld hl, (intro_hold)
+    dec hl
+    ld (intro_hold), hl
+    ld a, h
+    or l
+    ret nz
+
+.intr_skip:
+    ld a, 3
+    ld (intro_phase), a
+    ret
+
 ; The 6912-byte SCR data is included directly
 title_scr_data:
     INCBIN "title.scr"

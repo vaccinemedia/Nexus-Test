@@ -33,6 +33,7 @@ mirror_setup_subject:
     ld (active_labels_ptr), hl
     xor a
     ld (mirror_ask_idx), a
+    ld (mirror_ask_count), a             ; reset the unlock counter
     ret
 
 ; =================================================================
@@ -179,7 +180,22 @@ me_p0:
 
 ; Fetch mirror_lines[mirror_line_idx] into mirror_line_ptr. If the
 ; text pointer is 0, jump to fade. Otherwise queue hold_before.
+;
+; Branching: at the top of the extended coda (index MIRROR_EXTENDED_
+; START), if the player hasn't asked the mirror enough times, we skip
+; the four Deckard-reflection records and jump straight to "TIME TO
+; DIE". Engaged players who invoked ASK >= MIRROR_ASK_UNLOCK times
+; earn the fuller ending.
 me_p1:
+    ld a, (mirror_line_idx)
+    cp MIRROR_EXTENDED_START
+    jr nz, .mp1_load
+    ld a, (mirror_ask_count)
+    cp MIRROR_ASK_UNLOCK
+    jr nc, .mp1_load                     ; unlocked; play the extended lines
+    ld a, MIRROR_EXTENDED_END
+    ld (mirror_line_idx), a              ; skip to "TIME TO DIE" record
+.mp1_load:
     call me_load_line
     ld a, (hl)
     inc hl
@@ -349,6 +365,15 @@ me_tick_timer:
 mirror_ask_response:
     ld a, SFX_ASK
     call ay_play_sfx
+
+    ; Bump the ASK counter (saturates at 255) so me_p1 can decide
+    ; whether to unlock the extended monologue coda when the mirror
+    ; interrogation ends.
+    ld a, (mirror_ask_count)
+    inc a
+    jr z, .mar_no_bump                    ; already 255; leave saturated
+    ld (mirror_ask_count), a
+.mar_no_bump:
 
     ; Wipe the reply band before writing.
     ld d, RESPONSE_REPLY_ROW

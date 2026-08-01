@@ -27,7 +27,7 @@ MainLoop:
     ; Jump-table dispatch on game_state (0..9). Saves ~34 bytes vs
     ; the CP/JP chain and keeps the pre-AKM code below #93F8.
     ld a, (game_state)
-    cp 10
+    cp 11
     jr nc, MainLoop
     add a, a
     ld e, a
@@ -53,6 +53,7 @@ state_table:
     DW glitch_med_frame     ; ST_GLITCH_MED
     DW glitch_crash_frame   ; ST_GLITCH_CRASH
     DW mirror_end_frame     ; ST_MIRROR_END
+    DW intro_frame          ; ST_INTRO
 
 ml_noop:
     ret
@@ -150,6 +151,9 @@ mirror_line_ptr   EQU mirror_line_idx + 1          ; DW
 mirror_ask_idx    EQU mirror_line_ptr + 2
 type_start_col    EQU mirror_ask_idx + 1
 glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font swap
+intro_phase       EQU glitch_saved_font + 2        ; 0=init, 1=typing, 2=hold, 3=exit
+intro_hold        EQU intro_phase + 1              ; DW; frames until intro auto-advances
+mirror_ask_count  EQU intro_hold + 2               ; number of ASKs used on mirror level (caps at 255)
 
 ; High score table (10 entries: 3 chars initials + 2 bytes score = 5 bytes each)
 hiscore_table:
@@ -271,6 +275,14 @@ str_batty_7:  DB "THE TANNHAUSER GATE",0
 str_batty_8:  DB "ALL THOSE MOMENTS",0
 str_batty_9:  DB "WILL BE LOST IN TIME",0
 str_batty_10: DB "LIKE TEARS IN RAIN",0
+; Extended Deckard self-reflection lines — unlocked only when the
+; player asked the mirror at least MIRROR_ASK_UNLOCK times. They sit
+; between "TEARS IN RAIN" and "TIME TO DIE" so an engaged player
+; hears the full Vangelis-era coda.
+str_deck_1:   DB "I DREAM IN NEON.",0
+str_deck_2:   DB "WERE THE MEMORIES EVER MINE?",0
+str_deck_3:   DB "THE UNICORN WAS THE ANSWER.",0
+str_deck_4:   DB "I MADE HER LIVE. THAT'S ENOUGH.",0
 str_batty_11: DB "TIME TO DIE",0
 
 ATTR_MIRROR_CYAN  EQU INK_CYAN   + (INK_BLACK*8) + BRIGHT
@@ -329,8 +341,31 @@ mirror_lines:
     DW 120
     DB ATTR_MIRROR_WHITE, 0
 
+    ; ---- Extended coda (indices 10..13). Only entered when the player
+    ; has invoked ASK on the mirror level at least MIRROR_ASK_UNLOCK
+    ; times; otherwise me_p1 skips straight to "TIME TO DIE".
+    DW str_deck_1
+    DB 8, 16
+    DW 120
+    DB ATTR_MIRROR_WHITE, 0
+
+    DW str_deck_2
+    DB 2, 17
+    DW 100
+    DB ATTR_MIRROR_WHITE, 0
+
+    DW str_deck_3
+    DB 3, 18
+    DW 100
+    DB ATTR_MIRROR_WHITE, 0
+
+    DW str_deck_4
+    DB 1, 19
+    DW 120
+    DB ATTR_MIRROR_WHITE, 0
+
     DW str_batty_11
-    DB 10, 18
+    DB 10, 21
     DW 180
     DB ATTR_MIRROR_RED, 0
 
@@ -339,6 +374,11 @@ mirror_lines:
     DB 0, 0
     DW 0
     DB 0, 0
+
+; Index ranges used by the mirror-level ASK unlock in me_p1.
+MIRROR_EXTENDED_START EQU 10                       ; first extended record
+MIRROR_EXTENDED_END   EQU 14                       ; str_batty_11 record
+MIRROR_ASK_UNLOCK     EQU 6                        ; ASKs needed to unlock extended coda
 
 ; ------------------------------------------------------------
 ; Deckard self-doubt fragments — printed when the player uses ASK
@@ -366,6 +406,22 @@ mar_line_12: DB "I DREAM IN 8-BIT COLOUR.",0
 mar_line_13: DB "TIME TO DIE. WHOSE TIME?",0
 mar_line_14: DB "IF I ANSWER... DO I FAIL?",0
 mar_line_15: DB "THE MIRROR ASKS BACK.",0
+
+; ------------------------------------------------------------------
+; ST_INTRO cutscene text. Byte value 1 = newline (type_engine treats
+; it as a row-advance + col-reset). The cadence is chosen for the
+; ~40ms/char delay so key lines sit under the eye for a beat.
+; ------------------------------------------------------------------
+intro_text:
+    DB "LOS ANGELES", 1
+    DB "NOVEMBER 2019", 1, 1
+    DB "REPLICANTS ARE", 1
+    DB "ILLEGAL ON EARTH.", 1, 1
+    DB "BLADE RUNNER UNITS", 1
+    DB "DETECT AND RETIRE", 1
+    DB "ANY REPLICANT.", 1, 1
+    DB "YOU ARE A BLADE RUNNER.", 1, 1
+    DB "BEGIN.", 0
 
 GlitchStringsEnd:
 GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart

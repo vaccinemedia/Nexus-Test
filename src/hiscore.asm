@@ -548,6 +548,7 @@ start_new_game:
 
     xor a
     ld (screen_drawn), a
-    ld a, ST_LEVEL_INTRO
+    ld (intro_phase), a              ; enter the intro cutscene from phase 0
+    ld a, ST_INTRO
     ld (game_state), a
     ret

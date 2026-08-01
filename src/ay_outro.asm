@@ -45,8 +45,11 @@ ay_init_outro:
     xor a
     ld (outro_step), a
     ld (outro_fade_step), a
+    ld (melody_step), a
     ld a, 5
     ld (outro_fade_ticks), a
+    ld a, 1                            ; melody advances on first tick
+    ld (melody_timer), a
     ; Fire the first slot on the very next tick
     ld hl, 1
     ld (outro_timer), hl
@@ -94,6 +97,7 @@ outro_fade_tick:
 
 ay_tick_outro_mode:
     call outro_fade_tick
+    call outro_melody_tick
     ld hl, (outro_timer)
     dec hl
     ld (outro_timer), hl
@@ -124,9 +128,12 @@ ay_tick_outro_mode:
     ld (outro_timer), hl
     ret
 .ato_play:
-    ; Write R0..R5 (three tone periods) from the slot's first 6 bytes.
-    ld d, 0                           ; start register
-    ld b, 6                           ; bytes to copy
+    ; Write R0..R3 (Ch A + Ch B tone periods) from the slot's first
+    ; four bytes. Ch C (R4/R5) is deliberately left alone — the melody
+    ; sequencer owns Ch C entirely, so a chord change never yanks the
+    ; melody note out from under it.
+    ld d, 0                            ; start register
+    ld b, 4                            ; bytes to copy
 .ato_regs:
     ld a, (hl)
     push bc
@@ -139,12 +146,14 @@ ay_tick_outro_mode:
     inc hl
     inc d
     djnz .ato_regs
-    ; HL points to hold_frames (+6). Save it, then write the per-slot
-    ; noise period (byte +7) to R6 for dynamic rain/thunder atmosphere.
+    ; HL now at slot+4. Skip the two dead Ch C bytes (kept for the
+    ; original 8-byte-per-slot alignment) to reach hold_frames at +6.
+    inc hl
+    inc hl
     ld a, (hl)
     ld c, a                            ; C = hold_frames
     inc hl
-    ld a, (hl)                         ; A = noise period for this slot
+    ld a, (hl)                         ; noise period for this slot
     ld d, 6
     call ay_out
     ld l, c
@@ -172,3 +181,65 @@ outro_seq:
     DW 1008, 800, 672 : DB 220, 10     ; A     A2 C#3 E3
     DW 1198, 504, 400 : DB 220, 30     ; F#m   F#2 A3 C#4     (thunder swell)
     DW 0, 0, 0        : DB 0, 0        ; end marker -> loop
+
+; -----------------------------------------------------------------
+; outro_melody_tick — advances the Ch C melodic line one step every
+; MELODY_STEP_FRAMES frames (~1.1s @ 50 Hz). melody_step wraps 0..31,
+; giving 4 melody notes per chord slot across the 8-chord progression.
+; -----------------------------------------------------------------
+MELODY_STEP_FRAMES EQU 55                          ; ~1.1s per melody note
+
+outro_melody_tick:
+    ld hl, melody_timer
+    dec (hl)
+    ret nz
+    ld (hl), MELODY_STEP_FRAMES
+    ; Advance melody_step and wrap at 32.
+    ld a, (melody_step)
+    inc a
+    and 31
+    ld (melody_step), a
+    ; Lookup: melody_seq[step] is a 2-byte AY period.
+    add a, a                           ; step * 2
+    ld e, a
+    ld d, 0
+    ld hl, melody_seq
+    add hl, de
+    ld a, (hl)
+    push hl
+    ld d, 4                            ; R4 = Ch C tone lo
+    call ay_out
+    pop hl
+    inc hl
+    ld a, (hl)
+    ld d, 5                            ; R5 = Ch C tone hi
+    jp ay_out
+
+; -----------------------------------------------------------------
+; 32-note melodic line for Ch C. Four notes per chord slot; each
+; melody note dwells for MELODY_STEP_FRAMES frames. Notes chosen to
+; sit inside each chord and trace a slow descending/ascending shape
+; reminiscent of the Blade Runner End Titles.
+;
+; Slot 1 (Bm):    F#3 F#3 F#3 D4  (sustained root motion + lift)
+; Slot 2 (Bm7):   F#3 F#3 D4 C#4  (lift and settle)
+; Slot 3 (G):     D4  D4  B3 D4   (upper voicing, brief dip)
+; Slot 4 (F#m):   C#4 C#4 A3 A3   (descending into darker chord)
+; Slot 5 (Bm):    B3  D4  F#3 D4  (chord swell up then dip)
+; Slot 6 (Em):    E4  B3  G3 B3   (Em phrase)
+; Slot 7 (A):     E4  C#4 A3 C#4  (A arpeggio down + return)
+; Slot 8 (F#m):   A3  F#3 C#4 C#3 (turnaround; ends on C#3 leading to Bm)
+;
+; AY periods (@ 1.773450 MHz clock):
+;   C#3=799  D3=755  E3=672  F#3=599  G3=565  A3=504  B3=449
+;   C#4=400  D4=377  E4=336  F#4=300
+; -----------------------------------------------------------------
+melody_seq:
+    DW 599, 599, 599, 377              ; slot 1 (Bm):    F#3 F#3 F#3 D4
+    DW 599, 599, 377, 400              ; slot 2 (Bm7):   F#3 F#3 D4 C#4
+    DW 377, 377, 449, 377              ; slot 3 (G):     D4  D4  B3 D4
+    DW 400, 400, 504, 504              ; slot 4 (F#m):   C#4 C#4 A3 A3
+    DW 449, 377, 599, 377              ; slot 5 (Bm):    B3  D4  F#3 D4
+    DW 336, 449, 565, 449              ; slot 6 (Em):    E4  B3  G3 B3
+    DW 336, 400, 504, 400              ; slot 7 (A):     E4  C#4 A3 C#4
+    DW 504, 599, 400, 799              ; slot 8 (F#m):   A3  F#3 C#4 C#3

@@ -41,6 +41,11 @@ outro_step:   db 0
 outro_timer:  dw 0
 outro_fade_step:  db 0     ; 0=silent, ramps up to 11 during fade-in
 outro_fade_ticks: db 0     ; frames until next fade step
+; Melody sequencer state — Ch C plays a 32-note phrase over the
+; 8-chord loop (4 notes per chord slot). Runs independently of the
+; chord tick so the melodic line breathes across chord changes.
+melody_step:   db 0
+melody_timer:  db 0
 
 ; SFX state
 sfx_id:       db 0

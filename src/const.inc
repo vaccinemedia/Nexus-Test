@@ -22,6 +22,7 @@ ST_HISCORE      EQU 6
 ST_GLITCH_MED   EQU 7
 ST_GLITCH_CRASH EQU 8
 ST_MIRROR_END   EQU 9
+ST_INTRO        EQU 10                             ; Blade-Runner-style opening cutscene
 
 ; Glitch trigger windows (level number ranges).
 ; Subtle glitches use a continuous scheduler that ramps with level so
@@ -31,16 +32,21 @@ GLITCH2_LO      EQU 10
 GLITCH2_HI      EQU 14
 GLITCH3_LO      EQU 17
 GLITCH3_HI      EQU 20
-; Threshold levels for the subtle-glitch cadence ramp. Wait times
-; between fires get shorter as level_num crosses each threshold.
-GLITCH_MID_LEVEL  EQU 11                          ; level >= 11 uses "mid" cadence
-GLITCH_LATE_LEVEL EQU 21                          ; level >= 21 uses "late" cadence
-; Level at which the guaranteed WAKE UP ghost text fires (if the
-; scheduler hasn't already picked it earlier).
-WAKE_UP_LEVEL     EQU 5
+; Threshold levels for the subtle-glitch cadence ramp. Levels below
+; GLITCH_FIRST_LEVEL see NO subtle glitches at all — this deliberate
+; silence builds a false sense of security before the fourth wall
+; starts breaking down. Wait times between fires get shorter as
+; level_num crosses each threshold.
+GLITCH_FIRST_LEVEL EQU 8                          ; first level any subtle glitch can fire
+GLITCH_MID_LEVEL   EQU 15                         ; level >= 15 uses "mid" cadence
+GLITCH_LATE_LEVEL  EQU 21                         ; level >= 21 uses "late" cadence
+; Level at which the guaranteed WAKE UP ghost text fires (the moment
+; the game breaks its silence — right at GLITCH_FIRST_LEVEL so the
+; player's first glitch experience is the payoff word).
+WAKE_UP_LEVEL      EQU GLITCH_FIRST_LEVEL
 ; Index (1-based) of "WAKE UP" inside ghost_words; ghost_force_idx uses
 ; this value to override the random word picker.
-GHOST_FORCE_WAKE  EQU 2                            ; ghost_words[1] = gw_wake
+GHOST_FORCE_WAKE   EQU 2                          ; ghost_words[1] = gw_wake
 
 ; Ink colours (bits 0-2)
 INK_BLACK       EQU 0

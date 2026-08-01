@@ -56,10 +56,19 @@ schedule_subtle_glitch:
     xor a
     ld (subtle_timer), a
     ld (subtle_state), a
+    ld hl, 0
+    ld (glitch_wait_timer), hl         ; ensure scheduler starts idle
     ld a, (is_mirror_level)
     or a
     ret nz
-    ; Guaranteed WAKE UP moment on WAKE_UP_LEVEL.
+    ; Levels 1..GLITCH_FIRST_LEVEL-1 stay glitch-free to build a false
+    ; sense of security. glitch_wait_timer stays 0 so tick_subtle_glitch
+    ; treats this level as "not primed" and no ambient glitches fire.
+    ld a, (level_num)
+    cp GLITCH_FIRST_LEVEL
+    ret c
+    ; Guaranteed WAKE UP moment on WAKE_UP_LEVEL (== GLITCH_FIRST_LEVEL
+    ; so the first-ever glitch a player sees is the payoff).
     ld a, (wake_up_forced)
     or a
     jr nz, .ssg_rearm
