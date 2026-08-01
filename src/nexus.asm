@@ -115,11 +115,16 @@ query_icons       EQU rng_seed + 2                 ; 3 bytes; ICON_NONE set by s
 token_noun        EQU query_icons + 3              ; DW
 token_detail      EQU token_noun + 2               ; DW
 attract_timer     EQU token_detail + 2             ; DW; zeroed on entry to title/hiscore
-glitch_level_1    EQU attract_timer + 2
-glitch_level_2    EQU glitch_level_1 + 1
+; Four subtle-glitch trigger levels, one per effect kind so every
+; playthrough sees each subtle variant exactly once.
+sub_lvl_attr      EQU attract_timer + 2            ; kind 0 (attr corruption)
+sub_lvl_gauge     EQU sub_lvl_attr + 1             ; kind 1 (pupil gauge spike)
+sub_lvl_ghost     EQU sub_lvl_gauge + 1            ; kind 2 (ghost text word)
+sub_lvl_border    EQU sub_lvl_ghost + 1            ; kind 3 (border ripple)
+sub_done_bits     EQU sub_lvl_border + 1           ; bitmask; bit N set once kind N has fired
+glitch_level_2    EQU sub_done_bits + 1
 glitch_level_3    EQU glitch_level_2 + 1
-glitch_done_1     EQU glitch_level_3 + 1
-glitch_done_2     EQU glitch_done_1 + 1
+glitch_done_2     EQU glitch_level_3 + 1
 glitch_done_3     EQU glitch_done_2 + 1
 subtle_timer      EQU glitch_done_3 + 1
 subtle_kind       EQU subtle_timer + 1

@@ -45,7 +45,11 @@ check_glitch_trigger:
 
 ; =================================================================
 ; schedule_subtle_glitch — called once when interrogation first draws.
-; Never fires on the mirror level or a level not matching glitch_level_1.
+; Never fires on the mirror level. Checks the current level against
+; the four per-kind trigger levels rolled at start_new_game, so each
+; effect kind fires exactly once per playthrough (attr / gauge /
+; ghost / border) on a different level.
+; sub_done_bits bit N = kind N has already fired.
 ; =================================================================
 schedule_subtle_glitch:
     xor a
@@ -54,29 +58,40 @@ schedule_subtle_glitch:
     ld a, (is_mirror_level)
     or a
     ret nz
-    ld a, (glitch_done_1)
-    or a
-    ret nz
     ld a, (level_num)
-    ld b, a
-    ld a, (glitch_level_1)
-    cp b
-    ret nz
-    ld a, 1
-    ld (glitch_done_1), a
+    ld c, a                          ; C = current level
+    ld a, (sub_done_bits)
+    ld d, a                          ; D = done bitmask
+    ; Walk the sub_lvl_* table (4 contiguous bytes). B = kind, E = 1<<kind.
+    ld hl, sub_lvl_attr
+    ld b, 0
+    ld e, 1
+.ssg_lp:
+    ld a, d
+    and e
+    jr nz, .ssg_next                 ; already fired this kind
+    ld a, (hl)
+    cp c
+    jr z, .ssg_hit
+.ssg_next:
+    inc hl
+    inc b
+    sla e
+    ld a, b
+    cp 4
+    jr c, .ssg_lp
+    ret                              ; no trigger matched this level
+.ssg_hit:
+    ld a, b
+    ld (subtle_kind), a
+    ld a, d
+    or e
+    ld (sub_done_bits), a
     ; Delay 60..179 frames (1.2s..3.6s) before firing
     call rng_tick
     and #7f
     add a, 60
     ld (subtle_timer), a
-    ; Pick a random effect kind 0..3:
-    ;   0 = attr corruption
-    ;   1 = pupil gauge spike
-    ;   2 = ghost text word in the reply band
-    ;   3 = border ripple (cycles for a few frames)
-    call rng_tick
-    and 3
-    ld (subtle_kind), a
     ret
 
 ; =================================================================
@@ -193,7 +208,7 @@ subtle_ghost_text:
     ld (pr_row), a
     pop hl
     call print_str
-    ld a, 40
+    ld a, 100                        ; ~2s dwell so the word actually registers
     ld (subtle_timer), a
     ld a, 1
     ld (subtle_state), a
@@ -233,8 +248,11 @@ gw_home:  DB "GO HOME",0
 gw_null:  DB "NULL",0
 
 ; ----- Effect 3: border ripple (cycles border colour) -----
-; Cycles border through 4 colours over 4 hits, then restores to
-; black. subtle_state advances 0..4 on each firing.
+; Cycles border through a Blade-Runner-style rainbow flicker for
+; ~3 seconds, then restores to black. subtle_state advances
+; 0..BORDER_SEQ_LEN on each firing. Each step dwells for
+; BORDER_SEQ_DWELL frames.
+BORDER_SEQ_DWELL EQU 12                    ; ~240ms per colour
 subtle_border_ripple:
     ld a, (subtle_state)
     ld e, a
@@ -245,14 +263,14 @@ subtle_border_ripple:
     out (#fe), a
     ld a, (subtle_state)
     inc a
-    cp 5
+    cp BORDER_SEQ_LEN
     jr c, .sbr_more
     xor a
     ld (subtle_state), a
     ret
 .sbr_more:
     ld (subtle_state), a
-    ld a, 4
+    ld a, BORDER_SEQ_DWELL
     ld (subtle_timer), a
     ret
 
@@ -260,8 +278,17 @@ border_seq:
     DB 2                             ; red
     DB 6                             ; yellow
     DB 4                             ; green
+    DB 5                             ; cyan
+    DB 1                             ; blue
     DB 3                             ; magenta
+    DB 7                             ; white
+    DB 2                             ; red
+    DB 6                             ; yellow
+    DB 3                             ; magenta
+    DB 5                             ; cyan
+    DB 7                             ; white
     DB 0                             ; black — restore
+BORDER_SEQ_LEN EQU $ - border_seq
 
 ; =================================================================
 ; Shared char-by-char typing engine used by glitch/mirror sequences.

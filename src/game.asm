@@ -129,7 +129,8 @@ interrogation_frame:
     ld a, (is_mirror_level)
     or a
     call nz, mirror_apply_interrogation
-    ; Schedule tier-1 subtle glitch if this level matches glitch_level_1
+    ; Arm the tier-1 subtle glitch if this level matches one of the
+    ; four kind-specific sub_lvl_* triggers (attr/gauge/ghost/border).
     call schedule_subtle_glitch
     ld a, 1
     ld (screen_drawn), a
@@ -438,6 +439,7 @@ interrogation_frame:
     or a
     jr z, .dv_normal
     xor a
+    ld (music_mode), a               ; silence ambient — outro takes over
     ld (mirror_phase), a
     ld hl, 0
     ld (mirror_timer), hl

@@ -145,6 +145,7 @@ mirror_tick_gauges:
 ; Phase 7: exit to gameover.
 ; =================================================================
 mirror_end_frame:
+    call ay_tick_music                   ; drive the outro voices (mode 3)
     ld a, (mirror_phase)
     add a, a
     ld e, a
@@ -168,7 +169,7 @@ mirror_dispatch:
     DW me_p7
 
 me_p0:
-    call ay_mute
+    call ay_init_outro                   ; start the Vangelis-style pad
     xor a
     call clear_screen_attrs
     ld (mirror_line_idx), a
@@ -292,8 +293,10 @@ me_p6:
     ret
 
 me_p7:
-    call use_rom_font
+    call ay_mute                         ; kill outro voices
     xor a
+    ld (music_mode), a                   ; back to silence until title/ambient reset
+    call use_rom_font
     ld (screen_drawn), a
     ld (is_mirror_level), a
     ld hl, icon_labels

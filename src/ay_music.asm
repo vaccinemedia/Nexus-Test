@@ -29,12 +29,16 @@ ay_mute:
     ld a, #ff
     jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
-; ---- Music mode: 0=off, 1=title, 2=ambient ----
+; ---- Music mode: 0=off, 1=title, 2=ambient, 3=outro ----
 music_mode:   db 0
 
 ; Bass sequencer state (ambient mode)
 bass_timer:   db 0
 bass_step:    db 0
+
+; Outro sequencer state (Batty "tears in rain" three-voice pastiche)
+outro_step:   db 0
+outro_timer:  dw 0
 
 ; SFX state
 sfx_id:       db 0
@@ -69,6 +73,8 @@ ay_tick_music:
     jp z, ay_tick_title_mode
     cp 2
     jp z, ay_tick_ambient_mode
+    cp 3
+    jp z, ay_tick_outro_mode
     ret
 
 ay_tick_title_mode:
@@ -138,6 +144,121 @@ amb_pattern:
     DB 0,  8
     DB 1,  4
     DB 0,  56
+
+; ===============================================================
+; Outro music (Blade Runner "Tears in Rain" pastiche).
+; Three sustained voices in Bm — bass drone (A), harmonic pad (B),
+; slow melodic line (C). Chord progression cycles every ~40 seconds
+; while the Batty monologue types out; loops if the monologue runs
+; long. Volumes are held soft (~8-11 of 15) for an ambient feel.
+;
+; Sequence record layout (8 bytes/slot for cheap *8 indexing):
+;   +0/+1  Ch A tone period (12-bit)
+;   +2/+3  Ch B tone period
+;   +4/+5  Ch C tone period
+;   +6     hold_frames (1..255)
+;   +7     unused
+; Terminating slot uses A tone = 0 (loop back to slot 0).
+; ===============================================================
+ay_init_outro:
+    di
+    call PLY_AKM_Stop
+    ei
+    call ay_mute
+    ; Mixer: tones A/B/C on, noise off
+    ld d, 7
+    ld a, %00111000
+    call ay_out
+    ; Soft ambient volumes: bass 8, pad 10, melody 11 (of 15)
+    ld d, 8
+    ld a, 8
+    call ay_out
+    ld d, 9
+    ld a, 10
+    call ay_out
+    ld d, 10
+    ld a, 11
+    call ay_out
+    xor a
+    ld (outro_step), a
+    ; Fire the first slot on the very next tick
+    ld hl, 1
+    ld (outro_timer), hl
+    ld a, 3
+    ld (music_mode), a
+    ret
+
+ay_tick_outro_mode:
+    ld hl, (outro_timer)
+    dec hl
+    ld (outro_timer), hl
+    ld a, h
+    or l
+    ret nz
+    ; Timer elapsed — load the next chord slot.
+    ld a, (outro_step)
+    add a, a
+    add a, a
+    add a, a                          ; step * 8 = byte offset
+    ld e, a
+    ld d, 0
+    ld hl, outro_seq
+    add hl, de
+    ; Peek at A_lo/A_hi for the end-of-sequence marker (both zero -> loop)
+    ld a, (hl)
+    inc hl
+    ld c, a                           ; C = A_lo
+    ld a, (hl)
+    dec hl
+    or c
+    jr nz, .ato_play
+    ; Loop back to slot 0 and re-run this frame next tick
+    xor a
+    ld (outro_step), a
+    ld hl, 1
+    ld (outro_timer), hl
+    ret
+.ato_play:
+    ; Write R0..R5 (three tone periods) from the slot's first 6 bytes.
+    ld d, 0                           ; start register
+    ld b, 6                           ; bytes to copy
+.ato_regs:
+    ld a, (hl)
+    push bc
+    push hl
+    push de
+    call ay_out
+    pop de
+    pop hl
+    pop bc
+    inc hl
+    inc d
+    djnz .ato_regs
+    ; HL now points to hold_frames (+6). Load into outro_timer as a word.
+    ld a, (hl)
+    ld l, a
+    ld h, 0
+    ld (outro_timer), hl
+    ld hl, outro_step
+    inc (hl)
+    ret
+
+; --- Chord progression -------------------------------------------------
+; Notes (period = 1773400 / (16 * freq)):
+;   B2 =  898, D3 =  755, F#3 = 599, G2 = 1131, A3 = 504, F#2 = 1198,
+;   C#4 = 400, D4 =  377, B3 =  449, E3 = 672,  G3 = 565, A2 = 1008,
+;   C#3 = 800, F4 = 317
+; Hold = 220 frames per slot at 50 Hz -> ~4.4s. 8 slots -> ~35s loop.
+outro_seq:
+    DW 898, 755, 599  : DB 220, 0      ; Bm    B2 D3  F#3
+    DW 898, 755, 504  : DB 220, 0      ; Bm7   B2 D3  A3
+    DW 1131, 755, 377 : DB 220, 0      ; G     G2 D3  D4  (open voicing)
+    DW 1198, 504, 400 : DB 220, 0      ; F#m   F#2 A3 C#4
+    DW 898, 599, 449  : DB 220, 0      ; Bm    B2 F#3 B3  (octave)
+    DW 672, 565, 449  : DB 220, 0      ; Em    E3 G3  B3
+    DW 1008, 800, 672 : DB 220, 0      ; A     A2 C#3 E3
+    DW 1198, 504, 400 : DB 220, 0      ; F#m   F#2 A3 C#4  (turnaround)
+    DW 0, 0, 0        : DB 0, 0        ; end marker -> loop
 
 ; ---- SFX trigger: A = SFX_xxx ----
 ay_play_sfx:

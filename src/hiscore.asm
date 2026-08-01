@@ -515,17 +515,45 @@ start_new_game:
     ld hl, icon_labels
     ld (active_labels_ptr), hl
 
-    ; Roll three glitch trigger levels, one per window.
-    ; Window 1: levels GLITCH1_LO..GLITCH1_HI
+    ; Roll six glitch trigger levels: four subtle windows (one per
+    ; effect kind so every playthrough sees each subtle variant), one
+    ; med window, one crash window. All rolls fall inside pre-vetted
+    ; per-window ranges that don't overlap the tutorial or finale.
+    ; Subtle window 1: attr corrupt (SUB_ATTR_LO..SUB_ATTR_HI, 3 wide)
     call rng_tick
-    and 3                       ; 0..3 (window is 4 levels wide: 5..8)
-    add a, GLITCH1_LO
-    ld (glitch_level_1), a
-    ; Window 2: levels GLITCH2_LO..GLITCH2_HI (5 wide: 10..14)
+    and 3
+.sng_roll_a:
+    cp 3
+    jr c, .sng_roll_a_ok
+    sub 3
+    jr .sng_roll_a
+.sng_roll_a_ok:
+    add a, SUB_ATTR_LO
+    ld (sub_lvl_attr), a
+    ; Subtle window 2: ghost text (SUB_GHOST_LO..SUB_GHOST_HI, 4 wide)
     call rng_tick
-    ld b, a
-    ld a, b
-    and 7                       ; 0..7
+    and 3
+    add a, SUB_GHOST_LO
+    ld (sub_lvl_ghost), a
+    ; Subtle window 3: border ripple (SUB_BORDER_LO..SUB_BORDER_HI, 2 wide)
+    call rng_tick
+    and 1
+    add a, SUB_BORDER_LO
+    ld (sub_lvl_border), a
+    ; Subtle window 4: gauge spike (SUB_GAUGE_LO..SUB_GAUGE_HI, 3 wide)
+    call rng_tick
+    and 3
+.sng_roll_g:
+    cp 3
+    jr c, .sng_roll_g_ok
+    sub 3
+    jr .sng_roll_g
+.sng_roll_g_ok:
+    add a, SUB_GAUGE_LO
+    ld (sub_lvl_gauge), a
+    ; Med window: GLITCH2_LO..GLITCH2_HI (5 wide: 10..14)
+    call rng_tick
+    and 7
 .sng_roll2:
     cp 5
     jr c, .sng_roll2_ok
@@ -534,14 +562,14 @@ start_new_game:
 .sng_roll2_ok:
     add a, GLITCH2_LO
     ld (glitch_level_2), a
-    ; Window 3: levels GLITCH3_LO..GLITCH3_HI (4 wide: 17..20)
+    ; Crash window: GLITCH3_LO..GLITCH3_HI (4 wide: 17..20)
     call rng_tick
     and 3
     add a, GLITCH3_LO
     ld (glitch_level_3), a
-    ; Reset fired flags
+    ; Reset fired flags: subtle uses one bitmask (bit N = kind N fired)
     xor a
-    ld (glitch_done_1), a
+    ld (sub_done_bits), a
     ld (glitch_done_2), a
     ld (glitch_done_3), a
     ld (is_mirror_level), a

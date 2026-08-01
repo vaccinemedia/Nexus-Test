@@ -24,12 +24,23 @@ ST_GLITCH_CRASH EQU 8
 ST_MIRROR_END   EQU 9
 
 ; Glitch trigger windows (level number ranges)
-GLITCH1_LO      EQU 5
-GLITCH1_HI      EQU 8
+; Med (Deckard fragment) and crash (fake BASIC boot) tiers use one
+; window each. Subtle glitches are split into four windows, one per
+; effect kind (attr / gauge / ghost / border), so every playthrough
+; sees every subtle variant once. Chosen to avoid the med + crash
+; windows and the level 1 tutorial and level 25 mirror finale.
+SUB_ATTR_LO     EQU 2                             ; kind 0 (attr corrupt)
+SUB_ATTR_HI     EQU 4
+SUB_GHOST_LO    EQU 6                             ; kind 2 (ghost text word)
+SUB_GHOST_HI    EQU 9
 GLITCH2_LO      EQU 10
 GLITCH2_HI      EQU 14
+SUB_BORDER_LO   EQU 15                            ; kind 3 (border ripple)
+SUB_BORDER_HI   EQU 16
 GLITCH3_LO      EQU 17
 GLITCH3_HI      EQU 20
+SUB_GAUGE_LO    EQU 22                            ; kind 1 (pupil gauge spike)
+SUB_GAUGE_HI    EQU 24
 
 ; Ink colours (bits 0-2)
 INK_BLACK       EQU 0
