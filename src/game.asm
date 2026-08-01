@@ -8,8 +8,23 @@ level_intro_frame:
     or a
     jp nz, .li_wait
 
+    ; Check for pending fourth-wall-break event on this level.
+    ; May change game_state to ST_GLITCH_MED or ST_GLITCH_CRASH.
+    call check_glitch_trigger
+    ld a, (game_state)
+    cp ST_LEVEL_INTRO
+    ret nz
+
     ; Prepare subject for this level
     call prepare_current_subject
+    ; Mirror-level override: if this is the final level, patch the subject
+    ld a, (level_num)
+    cp MIRROR_LEVEL
+    jr nz, .li_no_mirror
+    ld a, 1
+    ld (is_mirror_level), a
+    call mirror_setup_subject
+.li_no_mirror:
 
     call use_custom_font
 
@@ -110,11 +125,23 @@ interrogation_frame:
     or a
     jp nz, .int_input
     call draw_interrogation
+    ; Mirror level: overwrite icon labels and prime auto-running gauges
+    ld a, (is_mirror_level)
+    or a
+    call nz, mirror_apply_interrogation
+    ; Schedule tier-1 subtle glitch if this level matches glitch_level_1
+    call schedule_subtle_glitch
     ld a, 1
     ld (screen_drawn), a
 
 .int_input:
     call ay_tick_music
+    ; Auto-running gauges on the mirror level (no player input needed)
+    ld a, (is_mirror_level)
+    or a
+    call nz, mirror_tick_gauges
+    ; Tick the tier-1 subtle glitch scheduler
+    call tick_subtle_glitch
 
     ; Handle pupil blink countdown
     ld a, (blink_timer)
@@ -271,6 +298,17 @@ interrogation_frame:
 
 ; ---- Ask question (core gameplay) ----
 .int_ask:
+    ; On the mirror level, ASK is repurposed: instead of firing the
+    ; normal Voight-Kampff logic, we show one of Deckard's rotating
+    ; self-doubt fragments in the reply band.
+    ld a, (is_mirror_level)
+    or a
+    jr z, .int_ask_normal
+    ld a, (query_count)
+    or a
+    ret z               ; still requires at least one icon queued
+    jp mirror_ask_response
+.int_ask_normal:
     ld a, (query_count)
     or a
     ret z               ; need at least 1 icon
@@ -395,6 +433,18 @@ interrogation_frame:
     call ay_mute
     xor a
     ld (screen_drawn), a
+    ; Mirror level: divert to Batty monologue ending instead of verdict
+    ld a, (is_mirror_level)
+    or a
+    jr z, .dv_normal
+    xor a
+    ld (mirror_phase), a
+    ld hl, 0
+    ld (mirror_timer), hl
+    ld a, ST_MIRROR_END
+    ld (game_state), a
+    ret
+.dv_normal:
     ld a, ST_VERDICT
     ld (game_state), a
     ret
@@ -816,12 +866,12 @@ draw_icon_labels:
     add a, a
     add a, a
     ld (pr_col), a
-    ; Get icon label pointer
+    ; Get icon label pointer via active_labels_ptr (mirror-swappable)
     ld a, c
     add a, a
     ld e, a
     ld d, 0
-    ld hl, icon_labels
+    ld hl, (active_labels_ptr)
     add hl, de
     ld a, (hl)
     inc hl
@@ -943,7 +993,7 @@ draw_query_strip:
     add a, a
     ld e, a
     ld d, 0
-    ld hl, icon_labels
+    ld hl, (active_labels_ptr)
     add hl, de
     ld a, (hl)
     inc hl
@@ -1008,7 +1058,7 @@ verdict_frame:
     ld a, (lives)
     or a
     jr nz, .vf_draw
-    ; Final death: play "oh no" sample, then game over
+    ; Final death: play the "oh no" sample, then game over
     call play_oh_no
     call ay_init_ambient
     call use_rom_font
@@ -1153,7 +1203,7 @@ verdict_frame:
     ld hl, str_next
     call print_str
 
-    ; Play beeper sample (screen is already visible)
+    ; Play verdict sample from bank 1 (screen is already visible)
     ld a, (verdict_correct)
     or a
     jr z, .vf_wrong_sample

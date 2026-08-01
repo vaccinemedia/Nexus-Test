@@ -9,35 +9,43 @@ video_home_128:
     out (c), a
     ret
 
-; --- Paging proof: #C000 bank 0 vs bank 1 ---
+; --- Paging proof: #C000 bank 3 vs bank 4 ---
+; Banks 3 and 4 are unused by the loader, so probing them doesn't
+; corrupt game code (bank 0) or sample data (bank 1). Keeps bit 4
+; (48K ROM) set throughout so BASIC-adjacent state stays sane.
+; Probes 128K bank paging using banks 4 and 6, which the loader
+; leaves empty (bank 3 now holds glitch strings, bank 1 holds
+; samples, so we can't safely scribble on those). Bit 4 keeps the
+; 48K ROM mapped; bit 5 is always clear so paging stays enabled.
 verify_paging:
     ld bc, #7ffd
-    xor a                    ; was LD A,0 — saves 1 byte, 3T
+    ld a, #14                ; bank 4, 48K ROM
     out (c), a
     ld hl, #c000
     ld (hl), #a5
-    ld a, 1
+    ld a, #16                ; bank 6, 48K ROM
     out (c), a
     ld (hl), #5a
-    xor a                    ; was LD A,0 — saves 1 byte, 3T
+    ld a, #14                ; back to bank 4
     out (c), a
     ld a, (hl)
     cp #a5
     jr nz, vp_fail
-    ld a, 1
+    ld a, #16                ; bank 6
     out (c), a
     ld a, (hl)
     cp #5a
     jr nz, vp_fail
-    xor a                    ; was LD A,0 — saves 1 byte, 3T
+    ld a, #10                ; restore bank 0
     out (c), a
     ld a, 1
     ld (paging_ok), a
     ret
 vp_fail:
+    ld a, #10                ; restore bank 0
+    out (c), a
     xor a
     ld (paging_ok), a
-    out (c), a               ; A already 0 from XOR A — saves 1 byte, 3T
     ret
 
 ; A = attribute byte — fill 32x24, clear bitmap

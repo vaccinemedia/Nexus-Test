@@ -511,6 +511,40 @@ start_new_game:
     ld (lives), a
     ld hl, 0
     ld (total_score), hl
+    ; Reset any mirror-level label override
+    ld hl, icon_labels
+    ld (active_labels_ptr), hl
+
+    ; Roll three glitch trigger levels, one per window.
+    ; Window 1: levels GLITCH1_LO..GLITCH1_HI
+    call rng_tick
+    and 3                       ; 0..3 (window is 4 levels wide: 5..8)
+    add a, GLITCH1_LO
+    ld (glitch_level_1), a
+    ; Window 2: levels GLITCH2_LO..GLITCH2_HI (5 wide: 10..14)
+    call rng_tick
+    ld b, a
+    ld a, b
+    and 7                       ; 0..7
+.sng_roll2:
+    cp 5
+    jr c, .sng_roll2_ok
+    sub 5
+    jr .sng_roll2
+.sng_roll2_ok:
+    add a, GLITCH2_LO
+    ld (glitch_level_2), a
+    ; Window 3: levels GLITCH3_LO..GLITCH3_HI (4 wide: 17..20)
+    call rng_tick
+    and 3
+    add a, GLITCH3_LO
+    ld (glitch_level_3), a
+    ; Reset fired flags
+    xor a
+    ld (glitch_done_1), a
+    ld (glitch_done_2), a
+    ld (glitch_done_3), a
+    ld (is_mirror_level), a
 
     ; Prepare subject for level 1
     call prepare_current_subject

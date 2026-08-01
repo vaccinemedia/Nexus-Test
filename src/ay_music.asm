@@ -264,9 +264,11 @@ sfx_start_wrong:
     jp ay_out                ; was CALL+RET — saves 1 byte, 17T
 
 ; ===============================================================
-; Beeper 1-bit PCM sample playback
-; Plays packed 1-bit data (8 samples/byte, MSB first) through
-; the beeper at ~8kHz. CPU is locked during playback.
+; Beeper 1-bit PCM sample playback.
+; Sample data lives in bank 5 (#6000-#68D1) which is always mapped
+; regardless of paging state, so no bank tricks are needed here.
+; Plays packed 1-bit data (8 samples/byte, MSB first) at ~8 kHz.
+; CPU is locked during playback (`di`/`ei`) to keep timing steady.
 ; ===============================================================
 play_hell_yeah:
     call ay_mute
@@ -295,11 +297,6 @@ play_hell_yeah:
     ei
     ret
 
-hellyeah_data:
-    INCBIN "hellyeah.bin"
-HELLYEAH_BYTES EQU $ - hellyeah_data
-
-; Same 1-bit PCM playback for "oh no" sample (wrong verdict)
 play_oh_no:
     call ay_mute
     ld hl, ohno_data
@@ -326,10 +323,6 @@ play_oh_no:
     jr nz, .pon_byte
     ei
     ret
-
-ohno_data:
-    INCBIN "ohno.bin"
-OHNO_BYTES EQU $ - ohno_data
 
 ; ---- SFX tick (called each frame) ----
 ay_tick_sfx:

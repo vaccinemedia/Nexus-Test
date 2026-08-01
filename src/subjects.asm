@@ -73,18 +73,19 @@ subj_name_9: DB "MIRA TYRELL",0
 ; randomly selects human or android archetype, copying it into
 ; current_subject. Randomises portrait seed.
 prepare_current_subject:
-    ; Compute tier = min(4, (level_num - 1) / 20)
+    ; Compute tier = min(4, (level_num - 1) / 5)
+    ; 25-level layout: L1-5=T0, L6-10=T1, L11-15=T2, L16-20=T3, L21-25=T4
     ld a, (level_num)
-    dec a                ; 0-99
+    dec a                ; 0-24
     ld b, 0
-.pcs_div20:
-    cp 20
+.pcs_div5:
+    cp 5
     jr c, .pcs_div_done
-    sub 20
+    sub 5
     inc b
-    jr .pcs_div20
+    jr .pcs_div5
 .pcs_div_done:
-    ld a, b              ; A = tier 0-4 (or higher if > 100)
+    ld a, b              ; A = tier 0-4
     cp 5
     jr c, .pcs_tier_ok
     ld a, 4              ; clamp to 4
@@ -160,23 +161,29 @@ get_subject_ptr:
     ld hl, current_subject
     ret
 
-; A = level (1-100), returns A = penalty per question
-; Formula: starts at 5, increases to 20 across 100 levels
+; A = level (1-25), returns A = penalty per question
+; 25-level curve: starts at 5, rises to 20 by the final tier
 get_penalty:
-    dec a                ; 0-99
-    ; penalty = 5 + (level_index * 15) / 99
-    ; Approximate: 5 + level_index / 7 (gives 5..19)
-    ld b, 0
-.gp_div:
-    cp 7
-    jr c, .gp_done
-    sub 7
-    inc b
-    jr .gp_div
-.gp_done:
-    ld a, b
-    add a, 5             ; 5 + quotient
-    cp 20
-    ret c
-    ld a, 20             ; clamp
+    dec a                ; 0-24
+    cp 25
+    jr c, .gp_ok
+    ld a, 24
+.gp_ok:
+    ld e, a
+    ld d, 0
+    ld hl, penalty_table
+    add hl, de
+    ld a, (hl)
     ret
+
+penalty_table:
+    ; L1-5 (T0): 5,5,6,6,7
+    DB 5, 5, 6, 6, 7
+    ; L6-10 (T1): 8,8,9,10,10
+    DB 8, 8, 9, 10, 10
+    ; L11-15 (T2): 11,12,12,13,14
+    DB 11, 12, 12, 13, 14
+    ; L16-20 (T3): 14,15,16,17,18
+    DB 14, 15, 16, 17, 18
+    ; L21-25 (T4): 18,19,19,20,20
+    DB 18, 19, 19, 20, 20
