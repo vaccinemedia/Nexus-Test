@@ -437,16 +437,18 @@ TK_DETAIL EQU 2          ; template marker: insert token_detail
 ; ================================================================
 pick_icon_tokens:
     push af
-    ; Noun: noun_ptrs + icon*8 + rng(0-3)*2
+    ; Noun pool: 8 nouns per icon.
+    ; Layout: noun_ptrs + icon*16 + rng(0-7)*2
     add a, a
     add a, a
-    add a, a             ; A = icon*8
+    add a, a
+    add a, a             ; A = icon*16
     ld d, 0
     ld e, a
     push de
     call rng_tick
     pop de
-    and 3
+    and 7
     add a, a
     add a, e
     ld e, a
@@ -555,7 +557,18 @@ pick_and_expand_scenario:
 
 ; ================================================================
 ; Select response template and expand with tokens.
-; Uses first icon, subject type, and RNG.
+;
+; Uses first icon, subject type, RNG, and the subject's difficulty
+; tier. Higher tier -> more likely to pick from the "hard" pool
+; (flat humans / convincingly emotional androids) so the text
+; alone stops betraying the subject's nature as the game ramps.
+;
+;   Tier 0 (D1, levels 1-5):   0% hard pool
+;   Tier 1 (D2, levels 6-10):  25% hard pool
+;   Tier 2 (D3, levels 11-15): 50% hard pool
+;   Tier 3 (D4, levels 16-20): 75% hard pool
+;   Tier 4 (D5, levels 21-25): 100% hard pool
+;
 ; Returns HL = response_buffer (expanded string).
 ; ================================================================
 select_and_build_response:
@@ -563,6 +576,25 @@ select_and_build_response:
     ld a, (hl)
     ld (sr_subj_type), a
 
+    ; Difficulty tier = subject.difficulty - 1, clamped 0..4.
+    ld a, (current_subject + SUBJ_DIFFICULTY)
+    or a
+    jr z, .sr_tier_ok                  ; guard: shouldn't be 0
+    dec a
+.sr_tier_ok:
+    cp 5
+    jr c, .sr_tier_clamped
+    ld a, 4
+.sr_tier_clamped:
+    ld c, a                            ; C = tier 0..4
+
+    ; Roll 0..3. If roll < tier, pick from the hard pool this turn.
+    call rng_tick
+    and 3
+    cp c
+    jp c, .sr_hard_pool
+
+    ; ---- Base pool: existing 8-per-(icon,type) selection ----
     ld a, (query_icons)
     cp ICON_NONE
     jr nz, .sr_has_icon
@@ -599,6 +631,43 @@ select_and_build_response:
     ld h, (hl)
     ld l, a              ; HL = template pointer
     jp expand_template   ; expand and return HL = response_buffer
+
+; ---- Hard pool: hard_response_ptrs[icon*8 + type*4 + rng(0-3)*2] ----
+.sr_hard_pool:
+    ld a, (query_icons)
+    cp ICON_NONE
+    jr nz, .sr_h_has_icon
+    xor a
+.sr_h_has_icon:
+    ; icon * 8
+    add a, a
+    add a, a
+    add a, a
+    ld d, a
+
+    ; type * 4
+    ld a, (sr_subj_type)
+    add a, a
+    add a, a
+    add a, d
+    ld d, a              ; D = icon*8 + type*4
+
+    push de
+    call rng_tick
+    pop de
+    and 3
+    add a, d             ; A = final index (0-127)
+
+    ld l, a
+    ld h, 0
+    add hl, hl
+    ld de, hard_response_ptrs
+    add hl, de
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    jp expand_template
 
 sr_subj_type:  DB 0
 

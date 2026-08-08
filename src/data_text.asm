@@ -25,26 +25,29 @@ il_14: DB "STOP",0
 il_15: DB "FILE",0
 
 ; =============================================================
-; TOKEN NOUN POOLS — 16 icons x 4 nouns each (64 DW entries)
-; Indexed: noun_ptrs + icon*8 + rng(0-3)*2
+; TOKEN NOUN POOLS — 16 icons x 8 nouns each (128 DW entries).
+; Slots 0..3 live in main image (below); slots 4..7 for each icon
+; live in bank 5 (see nexus.asm) so we can double variety without
+; blowing the main image budget.
+; Indexed: noun_ptrs + icon*16 + rng(0-7)*2
 ; =============================================================
 noun_ptrs:
-    DW n0_0,n0_1,n0_2,n0_3
-    DW n1_0,n1_1,n1_2,n1_3
-    DW n2_0,n2_1,n2_2,n2_3
-    DW n3_0,n3_1,n3_2,n3_3
-    DW n4_0,n4_1,n4_2,n4_3
-    DW n5_0,n5_1,n5_2,n5_3
-    DW n6_0,n6_1,n6_2,n6_3
-    DW n7_0,n7_1,n7_2,n7_3
-    DW n8_0,n8_1,n8_2,n8_3
-    DW n9_0,n9_1,n9_2,n9_3
-    DW n10_0,n10_1,n10_2,n10_3
-    DW n11_0,n11_1,n11_2,n11_3
-    DW n12_0,n12_1,n12_2,n12_3
-    DW n13_0,n13_1,n13_2,n13_3
-    DW n14_0,n14_1,n14_2,n14_3
-    DW n15_0,n15_1,n15_2,n15_3
+    DW n0_0,n0_1,n0_2,n0_3,   n0_4,n0_5,n0_6,n0_7
+    DW n1_0,n1_1,n1_2,n1_3,   n1_4,n1_5,n1_6,n1_7
+    DW n2_0,n2_1,n2_2,n2_3,   n2_4,n2_5,n2_6,n2_7
+    DW n3_0,n3_1,n3_2,n3_3,   n3_4,n3_5,n3_6,n3_7
+    DW n4_0,n4_1,n4_2,n4_3,   n4_4,n4_5,n4_6,n4_7
+    DW n5_0,n5_1,n5_2,n5_3,   n5_4,n5_5,n5_6,n5_7
+    DW n6_0,n6_1,n6_2,n6_3,   n6_4,n6_5,n6_6,n6_7
+    DW n7_0,n7_1,n7_2,n7_3,   n7_4,n7_5,n7_6,n7_7
+    DW n8_0,n8_1,n8_2,n8_3,   n8_4,n8_5,n8_6,n8_7
+    DW n9_0,n9_1,n9_2,n9_3,   n9_4,n9_5,n9_6,n9_7
+    DW n10_0,n10_1,n10_2,n10_3, n10_4,n10_5,n10_6,n10_7
+    DW n11_0,n11_1,n11_2,n11_3, n11_4,n11_5,n11_6,n11_7
+    DW n12_0,n12_1,n12_2,n12_3, n12_4,n12_5,n12_6,n12_7
+    DW n13_0,n13_1,n13_2,n13_3, n13_4,n13_5,n13_6,n13_7
+    DW n14_0,n14_1,n14_2,n14_3, n14_4,n14_5,n14_6,n14_7
+    DW n15_0,n15_1,n15_2,n15_3, n15_4,n15_5,n15_6,n15_7
 
 n0_0: DB "that house",0
 n0_1: DB "that garden",0

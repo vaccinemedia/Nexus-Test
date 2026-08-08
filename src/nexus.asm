@@ -386,9 +386,304 @@ intro_text:
     DB "YOU ARE A BLADE RUNNER.", 1, 1
     DB "BEGIN.", 0
 
+; ==================================================================
+; EXTRA NOUN POOL — slots 4..7 for each icon. Doubles the noun pool
+; from 4 to 8 per icon so procedural questions feel less repetitive
+; when the player leans on a single icon (e.g. MEMORY).
+; ==================================================================
+n0_4: DB "the classroom",0
+n0_5: DB "the stairwell",0
+n0_6: DB "that birthday",0
+n0_7: DB "that photograph",0
+n1_4: DB "empty rooms",0
+n1_5: DB "being watched",0
+n1_6: DB "sudden noises",0
+n1_7: DB "your own thoughts",0
+n2_4: DB "the bruise",0
+n2_5: DB "cracked teeth",0
+n2_6: DB "cold hands",0
+n2_7: DB "a slow ache",0
+n3_4: DB "warm bread",0
+n3_5: DB "a first kiss",0
+n3_6: DB "old friends",0
+n3_7: DB "quiet snow",0
+n4_4: DB "cat",0
+n4_5: DB "goat",0
+n4_6: DB "owl",0
+n4_7: DB "sparrow",0
+n5_4: DB "a lost child",0
+n5_5: DB "twin boys",0
+n5_6: DB "a shy girl",0
+n5_7: DB "an infant",0
+n6_4: DB "her lullaby",0
+n6_5: DB "her warning",0
+n6_6: DB "her silence",0
+n6_7: DB "her name",0
+n7_4: DB "an old man",0
+n7_5: DB "a young girl",0
+n7_6: DB "the courier",0
+n7_7: DB "the caller",0
+n8_4: DB "the future",0
+n8_5: DB "the past",0
+n8_6: DB "a lost hour",0
+n8_7: DB "the countdown",0
+n9_4: DB "a stranger",0
+n9_5: DB "an old dog",0
+n9_6: DB "a colleague",0
+n9_7: DB "your brother",0
+n10_4: DB "your voice",0
+n10_5: DB "your reflection",0
+n10_6: DB "your fingerprints",0
+n10_7: DB "your handwriting",0
+n11_4: DB "your alibi",0
+n11_5: DB "your record",0
+n11_6: DB "your story",0
+n11_7: DB "a false name",0
+n12_4: DB "that phrase",0
+n12_5: DB "that pause",0
+n12_6: DB "that reply",0
+n12_7: DB "the previous line",0
+n13_4: DB "that reason",0
+n13_5: DB "that motive",0
+n13_6: DB "that hesitation",0
+n13_7: DB "that omission",0
+n14_4: DB "that tremor",0
+n14_5: DB "that breath",0
+n14_6: DB "that swallow",0
+n14_7: DB "that flinch",0
+n15_4: DB "that entry",0
+n15_5: DB "that log",0
+n15_6: DB "that timestamp",0
+n15_7: DB "that reading",0
+
+; ==================================================================
+; HARD RESPONSE POOL — 4 additional response templates per (icon,
+; type). Layout: hard_response_ptrs[icon*8 + type*4 + rng(0-3)*2].
+;
+; Design: hard-pool humans sound flat / dissociated / rehearsed —
+; the way a stressed or exhausted person can talk. Hard-pool
+; androids sound convincingly emotional — the way a well-trained
+; replicant would mimic a real person. Combined with the difficulty
+; ramp in select_and_build_response, later interrogations lean
+; heavily on this pool so the player can't trust the text alone.
+; ==================================================================
+hard_response_ptrs:
+    ; Icon 0: MEMORY   (4 human hard + 4 android hard)
+    DW hr_mem_h0, hr_mem_h1, hr_mem_h2, hr_mem_h3
+    DW hr_mem_a0, hr_mem_a1, hr_mem_a2, hr_mem_a3
+    ; Icon 1: FEAR
+    DW hr_fear_h0, hr_fear_h1, hr_fear_h2, hr_fear_h3
+    DW hr_fear_a0, hr_fear_a1, hr_fear_a2, hr_fear_a3
+    ; Icon 2: PAIN
+    DW hr_pain_h0, hr_pain_h1, hr_pain_h2, hr_pain_h3
+    DW hr_pain_a0, hr_pain_a1, hr_pain_a2, hr_pain_a3
+    ; Icon 3: JOY
+    DW hr_joy_h0, hr_joy_h1, hr_joy_h2, hr_joy_h3
+    DW hr_joy_a0, hr_joy_a1, hr_joy_a2, hr_joy_a3
+    ; Icon 4: ANIMAL
+    DW hr_anim_h0, hr_anim_h1, hr_anim_h2, hr_anim_h3
+    DW hr_anim_a0, hr_anim_a1, hr_anim_a2, hr_anim_a3
+    ; Icon 5: CHILD
+    DW hr_chld_h0, hr_chld_h1, hr_chld_h2, hr_chld_h3
+    DW hr_chld_a0, hr_chld_a1, hr_chld_a2, hr_chld_a3
+    ; Icon 6: MOTHER
+    DW hr_moth_h0, hr_moth_h1, hr_moth_h2, hr_moth_h3
+    DW hr_moth_a0, hr_moth_a1, hr_moth_a2, hr_moth_a3
+    ; Icon 7: STRANGER
+    DW hr_str_h0, hr_str_h1, hr_str_h2, hr_str_h3
+    DW hr_str_a0, hr_str_a1, hr_str_a2, hr_str_a3
+    ; Icon 8: TIME
+    DW hr_time_h0, hr_time_h1, hr_time_h2, hr_time_h3
+    DW hr_time_a0, hr_time_a1, hr_time_a2, hr_time_a3
+    ; Icon 9: DEATH
+    DW hr_dth_h0, hr_dth_h1, hr_dth_h2, hr_dth_h3
+    DW hr_dth_a0, hr_dth_a1, hr_dth_a2, hr_dth_a3
+    ; Icon 10: SELF
+    DW hr_self_h0, hr_self_h1, hr_self_h2, hr_self_h3
+    DW hr_self_a0, hr_self_a1, hr_self_a2, hr_self_a3
+    ; Icon 11: TRUTH
+    DW hr_trth_h0, hr_trth_h1, hr_trth_h2, hr_trth_h3
+    DW hr_trth_a0, hr_trth_a1, hr_trth_a2, hr_trth_a3
+    ; Icon 12: REPEAT
+    DW hr_rpt_h0, hr_rpt_h1, hr_rpt_h2, hr_rpt_h3
+    DW hr_rpt_a0, hr_rpt_a1, hr_rpt_a2, hr_rpt_a3
+    ; Icon 13: DEEPER
+    DW hr_deep_h0, hr_deep_h1, hr_deep_h2, hr_deep_h3
+    DW hr_deep_a0, hr_deep_a1, hr_deep_a2, hr_deep_a3
+    ; Icon 14: STOP
+    DW hr_stop_h0, hr_stop_h1, hr_stop_h2, hr_stop_h3
+    DW hr_stop_a0, hr_stop_a1, hr_stop_a2, hr_stop_a3
+    ; Icon 15: FILE
+    DW hr_file_h0, hr_file_h1, hr_file_h2, hr_file_h3
+    DW hr_file_a0, hr_file_a1, hr_file_a2, hr_file_a3
+
+; --- MEMORY (hard) ---
+hr_mem_h0:  DB "Data on childhood. Fine.",0
+hr_mem_h1:  DB "Standard memories. Normal.",0
+hr_mem_h2:  DB "I recall events in order.",0
+hr_mem_h3:  DB "Yes. Every detail.",0
+hr_mem_a0:  DB "Wood polish. Summer light.",0
+hr_mem_a1:  DB "Her kitchen. Always warm.",0
+hr_mem_a2:  DB "I still hear her laugh.",0
+hr_mem_a3:  DB "Rain on the window.",0
+
+; --- FEAR (hard) ---
+hr_fear_h0: DB "I do not experience fear.",0
+hr_fear_h1: DB "Fear is manageable.",0
+hr_fear_h2: DB "Acknowledge threats. Proceed.",0
+hr_fear_h3: DB "Been afraid. Rarely.",0
+hr_fear_a0: DB "Being alone. That gets me.",0
+hr_fear_a1: DB "Losing everyone. Daily.",0
+hr_fear_a2: DB 1,". Since I was small.",0
+hr_fear_a3: DB "Something coming. I dream it.",0
+
+; --- PAIN (hard) ---
+hr_pain_h0: DB "Pain is a signal. I move on.",0
+hr_pain_h1: DB "I tolerate discomfort well.",0
+hr_pain_h2: DB "Physical sensation. I process.",0
+hr_pain_h3: DB "Felt pain. Informative.",0
+hr_pain_a0: DB "My knee aches in the rain.",0
+hr_pain_a1: DB "The scar from ",1,".",0
+hr_pain_a2: DB "Wrist as a boy. Snap.",0
+hr_pain_a3: DB "Bones heal. Feeling stays.",0
+
+; --- JOY (hard) ---
+hr_joy_h0:  DB "Contentment is experienced.",0
+hr_joy_h1:  DB "Task completion satisfies.",0
+hr_joy_h2:  DB "I do not require joy.",0
+hr_joy_h3:  DB "Positive states occur.",0
+hr_joy_a0:  DB "Her laugh. Every time.",0
+hr_joy_a1:  DB 1,". Small things. Always.",0
+hr_joy_a2:  DB "Light at four p.m.",0
+hr_joy_a3:  DB "My name spoken kindly.",0
+
+; --- ANIMAL (hard) ---
+hr_anim_h0: DB "Assess situation. Then act.",0
+hr_anim_h1: DB "Standard protocol. Help.",0
+hr_anim_h2: DB "Lower species. Assist.",0
+hr_anim_h3: DB "Call the service.",0
+hr_anim_a0: DB "Poor thing. I could not walk on.",0
+hr_anim_a1: DB "I would pick it up. Warm it.",0
+hr_anim_a2: DB "It is a life. Of course I help.",0
+hr_anim_a3: DB "I would sit with it.",0
+
+; --- CHILD (hard) ---
+hr_chld_h0: DB "Locate the guardian.",0
+hr_chld_h1: DB "Return child. Protocol.",0
+hr_chld_h2: DB "Call the authorities.",0
+hr_chld_h3: DB "Children are the priority.",0
+hr_chld_a0: DB "I would sit with them. Quiet.",0
+hr_chld_a1: DB "I would give my coat.",0
+hr_chld_a2: DB "You do not leave a child.",0
+hr_chld_a3: DB "Find the parents. Stay.",0
+
+; --- MOTHER (hard) ---
+hr_moth_h0: DB "Mother. Raised me adequately.",0
+hr_moth_h1: DB "She provided care. Standard.",0
+hr_moth_h2: DB "Mother. She is fine.",0
+hr_moth_h3: DB "Efficient. Reliable.",0
+hr_moth_a0: DB "Her hands. Rough. Kind.",0
+hr_moth_a1: DB "She sang. I hated it. Miss it.",0
+hr_moth_a2: DB "Waited up. Every night.",0
+hr_moth_a3: DB "Her coat. Rain and lemon.",0
+
+; --- STRANGER (hard) ---
+hr_str_h0:  DB "Assess intent. Decide.",0
+hr_str_h1:  DB "Evaluate risk. Standard.",0
+hr_str_h2:  DB "Respond appropriately.",0
+hr_str_h3:  DB "Strangers require caution.",0
+hr_str_a0:  DB "You just help. No thinking.",0
+hr_str_a1:  DB "Ask their name. Start there.",0
+hr_str_a2:  DB "People need people. I stop.",0
+hr_str_a3:  DB "I have been the stranger.",0
+
+; --- TIME (hard) ---
+hr_time_h0: DB "Time passes. I mark it.",0
+hr_time_h1: DB "Duration is measurable.",0
+hr_time_h2: DB "Experience time linearly.",0
+hr_time_h3: DB "My clock is accurate.",0
+hr_time_a0: DB "Where does it go? I ask too.",0
+hr_time_a1: DB "Some hours crawl. Some vanish.",0
+hr_time_a2: DB "I wish I could keep a good day.",0
+hr_time_a3: DB "Time healed me once. I hope.",0
+
+; --- DEATH (hard) ---
+hr_dth_h0:  DB "Cessation of function.",0
+hr_dth_h1:  DB "Studied loss. Comprehend.",0
+hr_dth_h2:  DB "Death is inevitable.",0
+hr_dth_h3:  DB "All systems terminate.",0
+hr_dth_a0:  DB "I held their hand at the end.",0
+hr_dth_a1:  DB "The silence after. Worst.",0
+hr_dth_a2:  DB "I still smell the hospital.",0
+hr_dth_a3:  DB "You do not get used to it.",0
+
+; --- SELF (hard) ---
+hr_self_h0: DB "Functional. Reliable.",0
+hr_self_h1: DB "What my role requires.",0
+hr_self_h2: DB "Fine. Ready to proceed.",0
+hr_self_h3: DB "Compliant. Present.",0
+hr_self_a0: DB "Tired. Just tired.",0
+hr_self_a1: DB "I do not know anymore.",0
+hr_self_a2: DB "Trying. That is it.",0
+hr_self_a3: DB "Complicated. Like everyone.",0
+
+; --- TRUTH (hard) ---
+hr_trth_h0: DB "Deception serves no purpose.",0
+hr_trth_h1: DB "My statements are accurate.",0
+hr_trth_h2: DB "Do not lie. Confirmed.",0
+hr_trth_h3: DB "Honesty is my default.",0
+hr_trth_a0: DB "Everyone lies. That is human.",0
+hr_trth_a1: DB "Small ones. To protect.",0
+hr_trth_a2: DB "Once. A big one. I regret.",0
+hr_trth_a3: DB "I lie to myself. Mornings.",0
+
+; --- REPEAT (hard) ---
+hr_rpt_h0:  DB "Restating the answer.",0
+hr_rpt_h1:  DB "Response unchanged.",0
+hr_rpt_h2:  DB "As previously indicated.",0
+hr_rpt_h3:  DB "Repeating verbatim.",0
+hr_rpt_a0:  DB "Really? Again? Fine.",0
+hr_rpt_a1:  DB "Same answer. Different one?",0
+hr_rpt_a2:  DB "You already asked me that.",0
+hr_rpt_a3:  DB "Trying to catch me out?",0
+
+; --- DEEPER (hard) ---
+hr_deep_h0: DB "Provide detail. Specify.",0
+hr_deep_h1: DB "As deep as instructed.",0
+hr_deep_h2: DB "More layers. Accessible.",0
+hr_deep_h3: DB "Clarify scope.",0
+hr_deep_a0: DB "You do not want to go deeper.",0
+hr_deep_a1: DB "I have said too much already.",0
+hr_deep_a2: DB "Deeper is not better.",0
+hr_deep_a3: DB "Some things stay buried.",0
+
+; --- STOP (hard) ---
+hr_stop_h0: DB "Halted. Awaiting input.",0
+hr_stop_h1: DB "Standing by.",0
+hr_stop_h2: DB "Paused. Ready.",0
+hr_stop_h3: DB "Signal acknowledged.",0
+hr_stop_a0: DB "What? What did I do?",0
+hr_stop_a1: DB "You are making me nervous.",0
+hr_stop_a2: DB "That tone. Did I say something?",0
+hr_stop_a3: DB "My heart just jumped.",0
+
+; --- FILE (hard) ---
+hr_file_h0: DB "Record entry noted.",0
+hr_file_h1: DB "Documented. Continuing.",0
+hr_file_h2: DB "Logged. Confirmed.",0
+hr_file_h3: DB "No objection.",0
+hr_file_a0: DB "What are you writing down?",0
+hr_file_a1: DB "Am I in trouble?",0
+hr_file_a2: DB "Please stop writing that.",0
+hr_file_a3: DB "You are judging me.",0
+
 GlitchStringsEnd:
 GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart
-    ASSERT GlitchStringsEnd <= #7EE0, "Glitch strings pushed too close to stack top"
+    ; Stack pointer starts at #7FF0. Deepest observed call depth
+    ; (interrogation frame + drawing + interrupts) is well under 100
+    ; bytes, so a ceiling of #7F80 leaves 112 bytes of stack headroom
+    ; while giving the string block ~6.5 KB total to work with.
+    ASSERT GlitchStringsEnd <= #7F80, "Glitch strings pushed too close to stack top"
     DISPLAY "Glitch strings at #6900, size: ", /D, GlitchStringsLen, " bytes (top #", /A, GlitchStringsEnd, ")"
 
     ; Return to bank 0 for anything that follows
