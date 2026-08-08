@@ -37,9 +37,9 @@ GLITCH3_HI      EQU 20
 ; silence builds a false sense of security before the fourth wall
 ; starts breaking down. Wait times between fires get shorter as
 ; level_num crosses each threshold.
-GLITCH_FIRST_LEVEL EQU 8                          ; first level any subtle glitch can fire
-GLITCH_MID_LEVEL   EQU 15                         ; level >= 15 uses "mid" cadence
-GLITCH_LATE_LEVEL  EQU 21                         ; level >= 21 uses "late" cadence
+GLITCH_FIRST_LEVEL EQU 5                          ; first level any subtle glitch can fire
+GLITCH_MID_LEVEL   EQU 13                         ; level >= 13 uses "mid" cadence
+GLITCH_LATE_LEVEL  EQU 20                         ; level >= 20 uses "late" cadence
 ; Level at which the guaranteed WAKE UP ghost text fires (the moment
 ; the game breaks its silence — right at GLITCH_FIRST_LEVEL so the
 ; player's first glitch experience is the payoff word).

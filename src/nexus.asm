@@ -153,7 +153,6 @@ type_start_col    EQU mirror_ask_idx + 1
 glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font swap
 intro_phase       EQU glitch_saved_font + 2        ; 0=init, 1=typing, 2=hold, 3=exit
 intro_hold        EQU intro_phase + 1              ; DW; frames until intro auto-advances
-mirror_ask_count  EQU intro_hold + 2               ; number of ASKs used on mirror level (caps at 255)
 
 ; High score table (10 entries: 3 chars initials + 2 bytes score = 5 bytes each)
 hiscore_table:
@@ -234,9 +233,9 @@ deckard_frag_2:
     DB "PROOF OF NOTHING",1
     DB "I DID NOT LIVE THEM",0
 deckard_frag_3:
-    DB "DO ANDROIDS DREAM",1
-    DB "OF ELECTRIC SHEEP",1
-    DB "OR ONLY OF THEMSELVES",0
+    DB "MY THOUGHTS ARRIVE",1
+    DB "ALREADY FORMED",1
+    DB "I DID NOT MAKE THEM",0
 
 boot_menu_lines:
     DB "128        ",0
@@ -275,14 +274,6 @@ str_batty_7:  DB "THE TANNHAUSER GATE",0
 str_batty_8:  DB "ALL THOSE MOMENTS",0
 str_batty_9:  DB "WILL BE LOST IN TIME",0
 str_batty_10: DB "LIKE TEARS IN RAIN",0
-; Extended Deckard self-reflection lines — unlocked only when the
-; player asked the mirror at least MIRROR_ASK_UNLOCK times. They sit
-; between "TEARS IN RAIN" and "TIME TO DIE" so an engaged player
-; hears the full Vangelis-era coda.
-str_deck_1:   DB "I DREAM IN NEON.",0
-str_deck_2:   DB "WERE THE MEMORIES EVER MINE?",0
-str_deck_3:   DB "THE UNICORN WAS THE ANSWER.",0
-str_deck_4:   DB "I MADE HER LIVE. THAT'S ENOUGH.",0
 str_batty_11: DB "TIME TO DIE",0
 
 ATTR_MIRROR_CYAN  EQU INK_CYAN   + (INK_BLACK*8) + BRIGHT
@@ -341,31 +332,8 @@ mirror_lines:
     DW 120
     DB ATTR_MIRROR_WHITE, 0
 
-    ; ---- Extended coda (indices 10..13). Only entered when the player
-    ; has invoked ASK on the mirror level at least MIRROR_ASK_UNLOCK
-    ; times; otherwise me_p1 skips straight to "TIME TO DIE".
-    DW str_deck_1
-    DB 8, 16
-    DW 120
-    DB ATTR_MIRROR_WHITE, 0
-
-    DW str_deck_2
-    DB 2, 17
-    DW 100
-    DB ATTR_MIRROR_WHITE, 0
-
-    DW str_deck_3
-    DB 3, 18
-    DW 100
-    DB ATTR_MIRROR_WHITE, 0
-
-    DW str_deck_4
-    DB 1, 19
-    DW 120
-    DB ATTR_MIRROR_WHITE, 0
-
     DW str_batty_11
-    DB 10, 21
+    DB 10, 18
     DW 180
     DB ATTR_MIRROR_RED, 0
 
@@ -374,11 +342,6 @@ mirror_lines:
     DB 0, 0
     DW 0
     DB 0, 0
-
-; Index ranges used by the mirror-level ASK unlock in me_p1.
-MIRROR_EXTENDED_START EQU 10                       ; first extended record
-MIRROR_EXTENDED_END   EQU 14                       ; str_batty_11 record
-MIRROR_ASK_UNLOCK     EQU 6                        ; ASKs needed to unlock extended coda
 
 ; ------------------------------------------------------------
 ; Deckard self-doubt fragments — printed when the player uses ASK

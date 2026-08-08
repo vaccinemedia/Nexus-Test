@@ -489,12 +489,15 @@ glitch_med_frame:
 gm_init:
     ld a, INK_RED + (INK_BLACK*8) + BRIGHT
     call clear_screen_attrs
-    ; Pick one of three Deckard monologue fragments at random
+    ; Pick one of three Deckard monologue fragments at random.
+    ; Rejection sample: re-roll on 3 so each fragment gets an even
+    ; 1/3 chance. The previous "on 3 -> 0" branch made frag_1 twice
+    ; as likely as frag_2/3, biasing repeat playthroughs.
+.gmi_roll:
     call rng_tick
     and 3
     cp 3
-    jr c, .gmi_frag_ok
-    xor a
+    jr z, .gmi_roll
 .gmi_frag_ok:
     add a, a                      ; *2 for pointer table
     ld e, a
