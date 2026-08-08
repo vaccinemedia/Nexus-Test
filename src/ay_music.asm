@@ -58,6 +58,7 @@ SFX_CHIRP     EQU 2
 SFX_ASK       EQU 3
 SFX_CORRECT   EQU 4
 SFX_WRONG     EQU 5
+SFX_TYPE      EQU 6                        ; short noise blip — typewriter key strike
 
 ; ---- Title music: Arkos Tracker AKM player ----
 ay_init_title:
@@ -172,6 +173,8 @@ ay_play_sfx:
     jp z, sfx_start_correct
     cp SFX_WRONG
     jp z, sfx_start_wrong
+    cp SFX_TYPE
+    jp z, sfx_start_type
     ret
 
 sfx_start_click:
@@ -280,6 +283,26 @@ sfx_start_wrong:
     ld d, 7
     ld a, %00001000
     jp ay_out                ; was CALL+RET — saves 1 byte, 17T
+
+; ---------------------------------------------------------------
+; SFX_TYPE — mechanical typewriter key strike. Very short high-
+; hiss noise burst on Ch C only (no tone). Fires once per printed
+; character during the ST_INTRO cutscene so text lands with an
+; audible click. Lasts 2 frames (~40 ms) so successive blips at
+; ~60 ms/char cadence read as click-click-click.
+; ---------------------------------------------------------------
+sfx_start_type:
+    ld a, 2                              ; ~40 ms burst
+    ld (sfx_timer), a
+    ld d, 6                              ; R6 = noise period
+    ld a, 4                              ; small = high-pitched hiss (mid-treble)
+    call ay_out
+    ld d, 10                             ; R10 = Ch C volume
+    ld a, 10                             ; audible but not shouty
+    call ay_out
+    ld d, 7                              ; R7 = mixer
+    ld a, %00011111                      ; noise-C only (all tones off, noise A/B off)
+    jp ay_out
 
 ; ===============================================================
 ; Beeper 1-bit PCM sample playback.

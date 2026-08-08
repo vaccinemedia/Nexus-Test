@@ -117,7 +117,9 @@ intro_frame:
     cp 2
     jr z, .intr_p2
     ; Phase 3 — exit to ST_LEVEL_INTRO. Reset screen_drawn so the
-    ; level intro re-renders cleanly.
+    ; level intro re-renders cleanly, and mute AY so any in-flight
+    ; typewriter blip doesn't leak into the next state.
+    call ay_mute
     xor a
     ld (screen_drawn), a
     ld a, ST_LEVEL_INTRO
@@ -157,10 +159,29 @@ intro_frame:
     ret
 
 .intr_p1:
+    ; SFX subsystem isn't ticked by ay_tick_music when music_mode=0
+    ; (intro is silent otherwise), so drive the SFX timer here so
+    ; each typewriter blip mutes itself after ~40 ms.
+    call ay_tick_sfx
     ; Let the user skip the whole intro with any key.
     call read_any_key
     or a
     jr nz, .intr_skip
+    ; Detect "about to print a real character this frame" so the
+    ; typewriter click lines up with the character reveal:
+    ;   type_timer == 0        -> type_engine will process next byte
+    ;   (type_ptr) >= 2        -> that byte is a printable char
+    ;                             (0 = end of string, 1 = newline)
+    ld a, (type_timer)
+    or a
+    jr nz, .intr_no_blip
+    ld hl, (type_ptr)
+    ld a, (hl)
+    cp 2
+    jr c, .intr_no_blip
+    ld a, SFX_TYPE
+    call ay_play_sfx
+.intr_no_blip:
     ld a, INTRO_TYPE_DELAY
     call type_engine
     ret nz                                ; still typing
