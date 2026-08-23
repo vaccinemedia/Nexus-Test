@@ -1,0 +1,10 @@
+# Stop Cline from reading heavy binary build outputs
+*.tap
+*.tzx
+*.rom
+*.bin
+.git/
+build/
+bin/
+# Force it to ignore the rest of the codebase for now
+# (We will feed it the two files manually)
