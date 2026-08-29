@@ -676,8 +676,7 @@ gc_p4:
     ld a, h
     or l
     ret nz
-    call use_rom_font                 ; default Spectrum font for the BASIC screen
-    ld a, INK_BLACK + (INK_WHITE*8)   ; light background (black on white)
+    ld a, INK_WHITE + (INK_BLACK*8)
     call clear_screen_attrs
     ld a, 5
     ld (crash_phase), a
@@ -695,27 +694,6 @@ gc_p5:
     ld (pr_row), a
     ld hl, str_bas_ok
     call print_str
-    ; Sinclair rainbow motif across the top of the BASIC screen
-    ld d, 0
-    ld b, 26
-    ld e, 2
-    ld a, INK_RED + (INK_RED*8) + BRIGHT
-    call set_row_attrs
-    ld d, 0
-    ld b, 28
-    ld e, 2
-    ld a, INK_YELLOW + (INK_YELLOW*8) + BRIGHT
-    call set_row_attrs
-    ld d, 0
-    ld b, 30
-    ld e, 2
-    ld a, INK_GREEN + (INK_GREEN*8) + BRIGHT
-    call set_row_attrs
-    ld d, 0
-    ld b, 30
-    ld e, 2
-    ld a, INK_CYAN + (INK_CYAN*8) + BRIGHT
-    call set_row_attrs
     ld hl, basic_listing
     ld (type_ptr), hl
     xor a
@@ -864,11 +842,11 @@ gc_draw_boot_menu:
     inc d
     jr .gdbm_lp
 .gdbm_end:
-    ; Rainbow strip across the "128" title row (Sinclair: red/yellow/green/cyan)
+    ; Rainbow strip across the "128" title row (green/yellow/red/magenta)
     ld d, 5
     ld b, 15
     ld e, 2
-    ld a, INK_RED + (INK_RED*8) + BRIGHT
+    ld a, INK_GREEN + (INK_GREEN*8) + BRIGHT
     call set_row_attrs
     ld d, 5
     ld b, 17
@@ -878,12 +856,12 @@ gc_draw_boot_menu:
     ld d, 5
     ld b, 19
     ld e, 2
-    ld a, INK_GREEN + (INK_GREEN*8) + BRIGHT
+    ld a, INK_RED + (INK_RED*8) + BRIGHT
     call set_row_attrs
     ld d, 5
     ld b, 21
     ld e, 2
-    ld a, INK_CYAN + (INK_CYAN*8) + BRIGHT
+    ld a, INK_MAG + (INK_MAG*8) + BRIGHT
     call set_row_attrs
     ; Highlight the first menu item ("Tape Loader") as initial selection
     ld d, 6
