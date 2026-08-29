@@ -153,7 +153,8 @@ type_start_col    EQU mirror_ask_idx + 1
 glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font swap
 intro_phase       EQU glitch_saved_font + 2        ; 0=init, 1=typing, 2=hold, 3=exit
 intro_hold        EQU intro_phase + 1              ; DW; frames until intro auto-advances
-LowRamVarsEnd     EQU intro_hold + 2
+name_order        EQU intro_hold + 2               ; 32 bytes; shuffled subject-name indices
+LowRamVarsEnd     EQU name_order + SUBJ_NAME_COUNT
     ; The printer buffer is only 256 bytes; #5C00 upwards is the system
     ; variable area and clobbering it will hang the machine.
     ASSERT LowRamVarsEnd <= #5C00, "Low-RAM variables overran the printer buffer"

@@ -515,6 +515,10 @@ start_new_game:
     ld hl, icon_labels
     ld (active_labels_ptr), hl
 
+    ; Deal this playthrough's subject names. Must happen after the RNG
+    ; seed above, or every game would deal the same order.
+    call shuffle_subject_names
+
     ; Roll two tier-based glitch trigger levels (med + crash).
     ; Subtle-tier glitches are now driven by a continuous scheduler in
     ; glitch.asm rather than a fixed roll, so we only need to reset its

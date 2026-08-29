@@ -171,6 +171,13 @@ SUBJ_PORTRAIT   EQU 6
 SUBJ_NAME       EQU 8
 SUBJ_SIZE       EQU 10
 
+; Subject name pool. Fixed-width records so an index addresses them
+; arithmetically with no pointer table. The count is a power of two so
+; the shuffle can pick an unbiased slot with a plain AND, and it exceeds
+; the 25 levels so each playthrough draws a different subset.
+SUBJ_NAME_LEN   EQU 12                             ; 11 chars + terminator
+SUBJ_NAME_COUNT EQU 32
+
 ; Subject types
 TYPE_HUMAN      EQU 0
 TYPE_ANDROID    EQU 1
