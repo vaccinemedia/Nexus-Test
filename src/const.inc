@@ -202,7 +202,7 @@ MAX_QUERY_ICONS EQU 3
 NUM_LEVELS      EQU 25
 MIRROR_LEVEL    EQU 25
 BASE_SCORE      EQU 100
-INTRO_DELAY     EQU 10
+INTRO_DELAY     EQU 50                             ; ~1s at ~50 Hz — long enough to read the name
 STARTING_LIVES  EQU 3
 
 ; Voight-Kampff gauge layout

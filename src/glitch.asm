@@ -659,10 +659,16 @@ gc_p3:
     ld e, BOOT_WIDTH
     ld a, ATTR_BOOT_SEL
     call set_row_attrs
+    ld a, INK_WHITE               ; the cursor-down keypress clicks too
+    call beeper_click
     ld hl, 25
     ld (crash_timer), hl
     ret
 .gcp3_done:
+    ; "128 BASIC" is chosen — the ENTER keypress clicks just like the
+    ; typing that follows. Border stays white while the speaker toggles.
+    ld a, INK_WHITE
+    call beeper_click
     ld hl, 20
     ld (crash_timer), hl
     ld a, 4
@@ -716,7 +722,10 @@ gc_p6:
     jr z, .gcp6_listing_done
     jp gc_cursor_draw             ; still typing — put the cursor back
 .gcp6_listing_done:
-    ; Listing done — show CONTINUE? prompt
+    ; Listing done — the ENTER that submits it clicks, then the
+    ; CONTINUE? prompt appears.
+    ld a, INK_WHITE
+    call beeper_click
     ld a, (type_row)
     inc a
     ld (type_row), a
@@ -737,6 +746,8 @@ gc_p7:
     bit 4, a
     jr nz, .gcp7_check_n
     ; Y — resume gameplay
+    ld a, INK_WHITE               ; the Y keypress clicks
+    call beeper_click
     ld hl, 25
     ld (crash_timer), hl
     ld a, 10
@@ -747,6 +758,9 @@ gc_p7:
     in a, (#fe)
     bit 3, a
     ret nz
+    ; N — the keypress clicks before the illusion starts coming apart
+    ld a, INK_WHITE
+    call beeper_click
     ; N — begin deeper text
     ld a, (type_row)
     ld (pr_row), a

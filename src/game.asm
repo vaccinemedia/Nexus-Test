@@ -69,12 +69,25 @@ level_intro_frame:
     ld (intro_timer), a
     ld a, 1
     ld (screen_drawn), a
+    ; The verdict screen advances on a key being held rather than newly
+    ; pressed, so that same key is usually still down when we get here.
+    ; Disarm the skip until it has been released, or the name flashes past.
+    xor a
+    ld (intro_skip_armed), a
 
 .li_wait:
-    ; Allow key press to skip remaining timer
     call read_any_key
     or a
+    jr z, .li_arm
+    ; A key is down — only skip if it went down after this screen appeared.
+    ld a, (intro_skip_armed)
+    or a
     jr nz, .li_go
+    jr .li_tick
+.li_arm:
+    ld a, 1
+    ld (intro_skip_armed), a
+.li_tick:
     ld a, (intro_timer)
     or a
     jr z, .li_go
@@ -116,6 +129,7 @@ level_intro_frame:
     ret
 
 intro_timer: db 0
+intro_skip_armed: db 0           ; 0 = waiting for the held key to be released
 
 ; ===============================================================
 ; ST_INTERROGATION — main gameplay
