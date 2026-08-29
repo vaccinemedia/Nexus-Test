@@ -542,8 +542,6 @@ start_new_game:
     ld hl, 0
     ld (glitch_wait_timer), hl
     ld (is_mirror_level), a
-    ld a, ST_LEVEL_INTRO             ; where the scripted fake crash resumes
-    ld (crash_return_state), a
 
     ; Prepare subject for level 1
     call prepare_current_subject

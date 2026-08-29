@@ -838,10 +838,8 @@ gc_p10:
     call ay_init_ambient
     xor a
     ld (screen_drawn), a
-    ld a, (crash_return_state)
+    ld a, ST_LEVEL_INTRO
     ld (game_state), a
-    ld a, ST_LEVEL_INTRO         ; re-arm the default for the scripted crash
-    ld (crash_return_state), a
     ret
 
 ; gc_draw_boot_menu lives in glitch_effects.asm, which is included after

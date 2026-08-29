@@ -1,11 +1,6 @@
     IFNDEF CONST_INC_INCLUDED
 CONST_INC_INCLUDED EQU 1
 
-; Debug hooks — set to 0 for a release build.
-; DEBUG_GLITCH_KEY: pressing "G" at any time jumps into the fake-crash /
-; 128 boot-menu sequence, then returns to the interrupted state.
-DEBUG_GLITCH_KEY EQU 1
-
 ; Hardware ports
 PORT_BORDER     EQU #fe
 PORT_128MEM     EQU #7ffd
