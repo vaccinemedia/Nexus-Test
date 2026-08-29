@@ -324,3 +324,343 @@ subtle_tape_load:
     out (#fe), a                       ; final restore just in case
     ld (subtle_state), a
     ret
+
+; =====================================================================
+; gc_draw_boot_menu — recreation of the real ZX Spectrum 128 boot menu.
+;
+; Geometry and colours were measured off a screenshot of a real machine
+; (see the BOOT_* / ATTR_BOOT_* constants in const.inc):
+;   * Screen and border are plain white; the box interior is BRIGHT white.
+;   * Row 7 is a black title bar: "128" in bright white at column 7, then
+;     five cells of rainbow at columns 15..19.
+;   * Rows 8..12 hold the menu items, "Tape Loader" highlighted in cyan.
+;   * Row 13 is blank and carries the box's bottom rule.
+;   * The copyright line sits on the bottom row of the screen.
+;
+; The box outline is a single pixel wide, so no font glyph can draw it —
+; the rules go straight into the bitmap instead.
+; =====================================================================
+gc_draw_boot_menu:
+    ld a, ATTR_BOOT_BG
+    call clear_screen_attrs            ; also blanks the bitmap
+    ld a, INK_WHITE
+    out (#fe), a                       ; white border, as on a real 128
+
+    ; ---- Box interior: BRIGHT white paper down to the bottom rule ----
+    ld d, BOOT_ROW_MENU
+.gdbm_body:
+    ld b, BOOT_COL_L
+    ld e, BOOT_WIDTH
+    ld a, ATTR_BOOT_BOX
+    call set_row_attrs                 ; preserves D
+    inc d
+    ld a, d
+    cp BOOT_ROW_BOT + 1
+    jr c, .gdbm_body
+
+    ; ---- Title bar: black across the box, "128" in bright white ----
+    ld d, BOOT_ROW_TOP
+    ld b, BOOT_COL_L
+    ld e, BOOT_WIDTH
+    ld a, ATTR_BOOT_TITLE
+    call set_row_attrs
+    ld a, BOOT_COL_L
+    ld (pr_col), a
+    ld a, BOOT_ROW_TOP
+    ld (pr_row), a
+    ld hl, str_boot_128
+    call print_str
+
+    ld d, BOOT_ROW_TOP
+    ld c, BOOT_RAIN_COL
+    call gc_draw_rainbow
+
+    ; ---- Menu items, one per row. Empty string ends the table. ----
+    ld hl, boot_menu_lines
+    ld d, BOOT_ROW_MENU
+.gdbm_items:
+    ld a, (hl)
+    or a
+    jr z, .gdbm_highlight
+    push de
+    ld a, BOOT_TEXT_COL
+    ld (pr_col), a
+    ld a, d
+    ld (pr_row), a
+    call print_str                     ; HL left on the null terminator
+    inc hl
+    pop de
+    inc d
+    jr .gdbm_items
+
+.gdbm_highlight:
+    ; ---- Initial selection sits on "Tape Loader" ----
+    ld d, BOOT_ROW_MENU
+    ld b, BOOT_COL_L
+    ld e, BOOT_WIDTH
+    ld a, ATTR_BOOT_SEL
+    call set_row_attrs
+
+    ; ---- Box outline. Verticals first, then the bottom rule. ----
+    ld d, BOOT_ROW_MENU
+.gdbm_rules:
+    ld e, BOOT_COL_L
+    ld c, #80                          ; leftmost pixel of the cell
+    call gc_cell_bits
+    ld e, BOOT_COL_R
+    ld c, #01                          ; rightmost pixel of the cell
+    call gc_cell_bits
+    inc d
+    ld a, d
+    cp BOOT_ROW_BOT + 1
+    jr c, .gdbm_rules
+    ld d, BOOT_ROW_BOT
+    ld e, BOOT_COL_L
+    call gc_cell_addr
+    ld a, h
+    add a, 7                           ; last scanline of the character row
+    ld h, a
+    ld b, BOOT_WIDTH
+.gdbm_bottom:
+    ld (hl), #FF
+    inc l
+    djnz .gdbm_bottom
+
+    ; ---- Copyright line at the foot of the screen ----
+    ld a, BOOT_COPY_COL
+    ld (pr_col), a
+    ld a, BOOT_COPY_ROW
+    ld (pr_row), a
+    ld hl, str_bas_copy
+    jp print_str
+
+; =====================================================================
+; gc_draw_basic_screen — the 128 BASIC editor screen, as it looks on a
+; real machine once "128 BASIC" is chosen from the boot menu: plain white
+; paper with black text, nothing at the top at all, and a black status
+; bar on row 21 carrying "128 BASIC" plus the rainbow motif.
+; =====================================================================
+gc_draw_basic_screen:
+    ld a, ATTR_BAS_TEXT
+    call clear_screen_attrs
+    ld a, INK_WHITE
+    out (#fe), a
+    ld d, BAS_BAR_ROW
+    ld b, 0
+    ld e, 32
+    ld a, ATTR_BAS_BAR
+    call set_row_attrs
+    xor a
+    ld (pr_col), a
+    ld a, BAS_BAR_ROW
+    ld (pr_row), a
+    ld hl, str_bas_bar
+    call print_str
+    ld d, BAS_BAR_ROW
+    ld c, BAS_RAIN_COL
+    jp gc_draw_rainbow
+
+; =====================================================================
+; gc_draw_rainbow — the five-cell diagonal rainbow, top-left cell at
+; (D = row, C = first column). The real ROM uses the same motif on the
+; boot screen's title bar and on the BASIC editor's status bar.
+; =====================================================================
+gc_draw_rainbow:
+    push bc                            ; keep the start column
+    ld hl, gc_rainbow_attrs
+    ld b, BOOT_RAIN_CELLS
+.gdr_attr:
+    push bc
+    push hl
+    ld a, (hl)
+    ld b, c                            ; B = column, A = attribute
+    ld e, 1
+    call set_row_attrs                 ; preserves D
+    pop hl
+    pop bc
+    inc hl
+    inc c
+    djnz .gdr_attr
+    pop bc                             ; C = first column again
+    ld b, BOOT_RAIN_CELLS
+.gdr_pix:
+    push bc
+    push de                            ; set below, so keep the row
+    ld e, c
+    call gc_cell_addr
+    ld de, gc_rainbow_pattern
+    ld b, 8
+.gdr_byte:
+    ld a, (de)
+    ld (hl), a
+    inc de
+    inc h                              ; next scanline within the cell
+    djnz .gdr_byte
+    pop de
+    pop bc
+    inc c
+    djnz .gdr_pix
+    ret
+
+; ---------------------------------------------------------------------
+; gc_cursor_draw / gc_cursor_erase — the editor's block cursor, parked
+; on the cell the type engine is about to fill. The blue/white blink is
+; the attribute's FLASH bit, so the ULA animates it for free.
+;
+; Erasing blanks the cell so the next character prints over clean paper.
+; ---------------------------------------------------------------------
+gc_cursor_draw:
+    ld a, ATTR_BAS_CURSOR
+    ld c, #FF                          ; solid block
+    jr gc_cursor_set
+gc_cursor_erase:
+    ld a, ATTR_BAS_TEXT
+    ld c, 0
+gc_cursor_set:
+    push af
+    ld a, (type_row)
+    ld d, a
+    ld a, (type_col)
+    ld e, a
+    call gc_cell_bits                  ; preserves DE
+    pop af
+    ld b, e
+    ld e, 1
+    jp set_row_attrs
+
+; ---------------------------------------------------------------------
+; beeper_click — one short pulse on the internal speaker.
+; A = border colour to hold while the speaker bit toggles (port #FE
+; carries both), so the click doesn't flash the border.
+;
+; Measured off a real 128 typing in the editor: the key click is a single
+; 3.6 ms square pulse, not a tone, which is why it reads as a "tick"
+; rather than a note. One pulse reproduces it exactly.
+;
+; Interrupts are off for the pulse so the ROM's frame handler can't
+; stretch it, then restored — the game normally runs with them enabled.
+; Blocking is fine here: ~12,700 T out of a ~70,000 T frame, and only on
+; the frames that actually emit a character.
+; ---------------------------------------------------------------------
+; 26 T per loop iteration. 496 iterations plus entry/exit overhead is
+; ~12,916 T, which at the 128K's 3.5469 MHz is 3.64 ms. Raise for a
+; duller click, lower for a sharper one.
+BEEPER_CLICK_LEN EQU 496
+
+beeper_click:
+    ld c, a                            ; C = border alone
+    or #10                             ; bit 4 = speaker on
+    di
+    out (#fe), a
+    ld hl, BEEPER_CLICK_LEN
+.bc_wait:
+    dec hl
+    ld a, h
+    or l
+    jr nz, .bc_wait
+    ld a, c
+    out (#fe), a                        ; speaker off, border unchanged
+    ei
+    ret
+
+; A 45-degree colour boundary: PAPER fills the top-left of the cell,
+; INK the bottom-right. Stacking five of these with each cell's PAPER
+; matching its neighbour's INK gives the boot screen's slanted rainbow.
+gc_rainbow_pattern:
+    DB #01,#03,#07,#0F,#1F,#3F,#7F,#FF
+
+gc_rainbow_attrs:
+    DB INK_RED    + (INK_BLACK*8)  + BRIGHT      ; black  -> red
+    DB INK_YELLOW + (INK_RED*8)    + BRIGHT      ; red    -> yellow
+    DB INK_GREEN  + (INK_YELLOW*8) + BRIGHT      ; yellow -> green
+    DB INK_CYAN   + (INK_GREEN*8)  + BRIGHT      ; green  -> cyan
+    DB INK_BLACK  + (INK_CYAN*8)   + BRIGHT      ; cyan   -> black
+
+; ---------------------------------------------------------------------
+; gc_cell_addr — D = row (0-23), E = col (0-31) -> HL = address of the
+; cell's top scanline. Corrupts A only.
+; ---------------------------------------------------------------------
+gc_cell_addr:
+    ld a, d
+    and #18                            ; which third of the screen
+    or #40
+    ld h, a
+    ld a, d
+    and 7                              ; row within the third
+    rlca
+    rlca
+    rlca
+    rlca
+    rlca                               ; * 32 bytes per row
+    or e
+    ld l, a
+    ret
+
+; ---------------------------------------------------------------------
+; gc_cell_bits — write C into all 8 scanlines of the cell at (D, E).
+; Preserves DE. Used for the boot box's single-pixel vertical rules.
+; ---------------------------------------------------------------------
+gc_cell_bits:
+    push de
+    call gc_cell_addr
+    ld b, 8
+.gcb_lp:
+    ld (hl), c
+    inc h
+    djnz .gcb_lp
+    pop de
+    ret
+
+; =====================================================================
+; check_debug_glitch_key — DEBUG HOOK, called from MainLoop every frame.
+;
+; Pressing "G" jumps straight into the ST_GLITCH_CRASH fake-crash / 128
+; boot-menu sequence from (almost) any state, so the boot screen can be
+; iterated on without playing 20 interrogations to reach it. When the
+; sequence finishes it returns to whatever state was interrupted.
+;
+; Set DEBUG_GLITCH_KEY to 0 in const.inc to compile this out for release.
+;
+; Keeps its own held-flag instead of read_game_key's key_held so the
+; normal input debounce is untouched.
+; =====================================================================
+check_debug_glitch_key:
+  IF DEBUG_GLITCH_KEY
+    ld a, #fd
+    in a, (#fe)
+    bit 4, a                           ; G = row A-S-D-F-G, bit 4
+    jr z, .cdg_down
+    xor a
+    ld (dbg_g_held), a                 ; released — re-arm
+    ret
+.cdg_down:
+    ld a, (dbg_g_held)
+    or a
+    ret nz                             ; still held from an earlier frame
+    ld a, 1
+    ld (dbg_g_held), a
+    ; States ST_GLITCH_MED (7) upwards are the typed cutscenes, and they all
+    ; share type_ptr/type_row/type_col with the crash sequence — interrupting
+    ; one would leave it typing from a stale pointer on return. So the debug
+    ; key only fires from the ordinary gameplay and menu states.
+    ld a, (game_state)
+    cp ST_GLITCH_MED
+    ret nc
+    ld (crash_return_state), a
+    ; A subtle glitch may be mid-flight with the font swapped out or the
+    ; border mid-ripple. Put both back so the boot screen renders clean,
+    ; and cancel the scheduler so it can't stomp on the crash.
+    call use_rom_font
+    xor a
+    out (#fe), a
+    ld (subtle_state), a
+    ld (subtle_timer), a
+    ld (crash_phase), a
+    ld (screen_drawn), a
+    ld hl, 0
+    ld (crash_timer), hl
+    ld (glitch_wait_timer), hl
+    ld a, ST_GLITCH_CRASH
+    ld (game_state), a
+  ENDIF
+    ret

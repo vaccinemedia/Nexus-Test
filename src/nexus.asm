@@ -21,9 +21,11 @@ Entry:
     call title_init
     xor a
     ld (game_state), a
+    ld (dbg_g_held), a
 
 MainLoop:
     call wait_frame
+    call check_debug_glitch_key
     ; Jump-table dispatch on game_state (0..9). Saves ~34 bytes vs
     ; the CP/JP chain and keeps the pre-AKM code below #93F8.
     ld a, (game_state)
@@ -153,6 +155,16 @@ type_start_col    EQU mirror_ask_idx + 1
 glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font swap
 intro_phase       EQU glitch_saved_font + 2        ; 0=init, 1=typing, 2=hold, 3=exit
 intro_hold        EQU intro_phase + 1              ; DW; frames until intro auto-advances
+; State ST_GLITCH_CRASH returns to when the fake crash finishes. The scripted
+; crash always resumes at ST_LEVEL_INTRO; the debug "G" trigger overrides this
+; with whatever state it interrupted so testing lands you back where you were.
+crash_return_state EQU intro_hold + 2
+dbg_g_held         EQU crash_return_state + 1      ; own debounce for the debug key
+LowRamVarsEnd      EQU dbg_g_held + 1
+    ; The printer buffer is only 256 bytes; #5C00 upwards is the system
+    ; variable area and clobbering it will hang the machine.
+    ASSERT LowRamVarsEnd <= #5C00, "Low-RAM variables overran the printer buffer"
+    DISPLAY "Low-RAM vars: ", /D, LowRamVarsEnd - #5B00, " of 256 bytes used"
 
 ; High score table (10 entries: 3 chars initials + 2 bytes score = 5 bytes each)
 hiscore_table:
@@ -237,12 +249,14 @@ deckard_frag_3:
     DB "ALREADY FORMED",1
     DB "I DID NOT MAKE THEM",0
 
+; The five menu items, one per row from BOOT_ROW_MENU. "128" is part of
+; the title bar and is drawn separately. No padding needed — the box
+; interior comes from attributes, not from printed spaces.
 boot_menu_lines:
-    DB "128        ",0
     DB "Tape Loader",0
-    DB "128 BASIC  ",0
-    DB "Calculator ",0
-    DB "48 BASIC   ",0
+    DB "128 BASIC",0
+    DB "Calculator",0
+    DB "48 BASIC",0
     DB "Tape Tester",0
     DB 0
 

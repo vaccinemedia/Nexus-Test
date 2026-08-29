@@ -404,6 +404,7 @@ ay_tick_sfx:
 ; AKM player binary is position-dependent (compiled by RASM for a fixed address).
 ; Pad to lock it at #93F8 so internal jumps stay valid after code size changes.
     ASSERT $ <= #93F8, "Code grew past AKM player address — rebuild akm_player.bin with RASM"
+    DISPLAY "Pre-AKM padding (spare bytes below #93F8): ", /D, #93F8 - $
     DS #93F8 - $, 0
     DISPLAY "AKM_PLAYER_ORG: ", $
 akm_player:

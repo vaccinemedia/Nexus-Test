@@ -628,7 +628,7 @@ gc_p2:
     or l
     ret nz
     call gc_draw_boot_menu
-    ld hl, 30
+    ld hl, BOOT_HOLD_FRAMES       ; let the "crash" sit still for 2 seconds
     ld (crash_timer), hl
     xor a
     ld (type_row), a             ; cursor index into menu
@@ -648,16 +648,16 @@ gc_p3:
     ld (type_row), a
     cp 2
     jr nc, .gcp3_done
-    ; Highlight moves from row 6 to row 7 (Tape Loader → 128 BASIC)
-    ld d, 6
-    ld b, 11
-    ld e, 11
-    ld a, INK_WHITE + (INK_BLACK*8) + BRIGHT
+    ; Highlight steps down from "Tape Loader" to "128 BASIC"
+    ld d, BOOT_ROW_MENU
+    ld b, BOOT_COL_L
+    ld e, BOOT_WIDTH
+    ld a, ATTR_BOOT_BOX
     call set_row_attrs
-    ld d, 7
-    ld b, 11
-    ld e, 11
-    ld a, INK_WHITE + (INK_BLUE*8) + BRIGHT
+    ld d, BOOT_ROW_MENU + 1
+    ld b, BOOT_COL_L
+    ld e, BOOT_WIDTH
+    ld a, ATTR_BOOT_SEL
     call set_row_attrs
     ld hl, 25
     ld (crash_timer), hl
@@ -676,41 +676,46 @@ gc_p4:
     ld a, h
     or l
     ret nz
-    ld a, INK_WHITE + (INK_BLACK*8)
-    call clear_screen_attrs
+    call gc_draw_basic_screen
     ld a, 5
     ld (crash_phase), a
     ret
 
+; The editor types from the top line — a real 128 shows no copyright and
+; no "0 OK" report on this screen, just the cursor and the status bar.
 gc_p5:
-    xor a
-    ld (pr_col), a
-    ld (pr_row), a
-    ld hl, str_bas_copy
-    call print_str
-    xor a
-    ld (pr_col), a
-    ld a, 1
-    ld (pr_row), a
-    ld hl, str_bas_ok
-    call print_str
     ld hl, basic_listing
     ld (type_ptr), hl
     xor a
     ld (type_start_col), a
     ld (type_col), a
-    ld a, 3
     ld (type_row), a
     ld a, 6
     ld (type_timer), a
     ld a, 6
     ld (crash_phase), a
-    ret
+    jp gc_cursor_draw             ; cursor is on screen before typing starts
 
 gc_p6:
+    call gc_cursor_erase
+    ; One key click per character, matching a real machine. type_timer
+    ; reaching 0 means this call is the one that emits a character; the
+    ; char test skips the terminator and embedded newlines.
+    ld a, (type_timer)
+    or a
+    jr nz, .gcp6_no_click
+    ld hl, (type_ptr)
+    ld a, (hl)
+    cp 2
+    jr c, .gcp6_no_click
+    ld a, INK_WHITE               ; hold the BASIC screen's white border
+    call beeper_click
+.gcp6_no_click:
     ld a, 6
     call type_engine
-    ret nz
+    jr z, .gcp6_listing_done
+    jp gc_cursor_draw             ; still typing — put the cursor back
+.gcp6_listing_done:
     ; Listing done — show CONTINUE? prompt
     ld a, (type_row)
     inc a
@@ -763,19 +768,23 @@ gc_p7:
     ld (type_col), a
     ld a, 5
     ld (type_timer), a
-    ; Red-on-black band for the deeper text (5 rows: 8..12)
-    ld d, 8
+    xor a
+    out (#fe), a                  ; illusion drops — lose the white border
+    ; Red-on-black band tearing through the BASIC screen, anchored to the
+    ; row the deeper text types into so it follows the listing's length.
+    ld a, (type_row)
+    ld d, a
+    ld a, 5                       ; five rows of band
 .gcp7_attr:
-    push de
+    push af
     ld b, 0
     ld e, 32
     ld a, INK_RED + (INK_BLACK*8) + BRIGHT
-    call set_row_attrs
-    pop de
+    call set_row_attrs            ; preserves D
+    pop af
     inc d
-    ld a, d
-    cp 13
-    jr c, .gcp7_attr
+    dec a
+    jr nz, .gcp7_attr
     ld a, 8
     ld (crash_phase), a
     ret
@@ -810,70 +819,28 @@ gc_p10:
     ld a, h
     or l
     ret nz
+    xor a
+    out (#fe), a                 ; back to the game's black border
     call ay_init_ambient
     xor a
     ld (screen_drawn), a
-    ld a, ST_LEVEL_INTRO
+    ld a, (crash_return_state)
     ld (game_state), a
+    ld a, ST_LEVEL_INTRO         ; re-arm the default for the scripted crash
+    ld (crash_return_state), a
     ret
 
-; -------- Boot menu drawing --------
-; Full 128 boot menu recreation: "128" banner with rainbow strip, then
-; five menu items rows 6-10. Highlight starts on "Tape Loader".
-gc_draw_boot_menu:
-    ld a, INK_BLACK + (INK_WHITE*8)
-    call clear_screen_attrs
-    ; Iterate through boot_menu_lines: null-terminated strings, one per row.
-    ; A leading empty string (single null byte) marks the end of the table.
-    ld hl, boot_menu_lines
-    ld d, 5
-.gdbm_lp:
-    ld a, (hl)
-    or a
-    jr z, .gdbm_end
-    push de
-    ld a, 11
-    ld (pr_col), a
-    ld a, d
-    ld (pr_row), a
-    call print_str                 ; HL left pointing at the null terminator
-    inc hl                         ; advance to next string
-    pop de
-    inc d
-    jr .gdbm_lp
-.gdbm_end:
-    ; Rainbow strip across the "128" title row (green/yellow/red/magenta)
-    ld d, 5
-    ld b, 15
-    ld e, 2
-    ld a, INK_GREEN + (INK_GREEN*8) + BRIGHT
-    call set_row_attrs
-    ld d, 5
-    ld b, 17
-    ld e, 2
-    ld a, INK_YELLOW + (INK_YELLOW*8) + BRIGHT
-    call set_row_attrs
-    ld d, 5
-    ld b, 19
-    ld e, 2
-    ld a, INK_RED + (INK_RED*8) + BRIGHT
-    call set_row_attrs
-    ld d, 5
-    ld b, 21
-    ld e, 2
-    ld a, INK_MAG + (INK_MAG*8) + BRIGHT
-    call set_row_attrs
-    ; Highlight the first menu item ("Tape Loader") as initial selection
-    ld d, 6
-    ld b, 11
-    ld e, 11
-    ld a, INK_WHITE + (INK_BLUE*8) + BRIGHT
-    jp set_row_attrs
-
+; gc_draw_boot_menu lives in glitch_effects.asm, which is included after
+; the AKM song data — the boot screen recreation is too big to fit in the
+; padding below the position-dependent player address.
+;
 ; boot_menu_lines, basic_listing, deeper_text live in bank 5 at
 ; #6900+ (always mapped alongside the samples). See nexus.asm.
 
-str_bas_copy:    DB "(C) 1986 Sinclair Research Ltd",0
-str_bas_ok:      DB "0 OK, 0:1",0
+str_boot_128:    DB "128",0
+str_bas_bar:     DB "128 BASIC",0
+; Char 127 is the ROM font's © glyph. 28 characters, so column 2 centres it.
+; Only the boot menu shows this — the BASIC editor screen has no copyright.
+str_bas_copy:    DB 127," 1986 Sinclair Research Ltd",0
 
 str_continue_q:  DB "CONTINUE? (Y/N)",0

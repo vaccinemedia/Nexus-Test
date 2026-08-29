@@ -8,6 +8,11 @@ LOADER_INC := src/loader_basic.inc
 
 .PHONY: all clean run
 
+# The AKM player/song are only regenerable with RASM. Without .PRECIOUS, a
+# failed RASM step makes make delete the checked-in binaries, which breaks
+# every subsequent build until they're restored from git.
+.PRECIOUS: src/akm_player.bin src/title_music_relocated.akm
+
 all: $(OUTDIR)/nexus.tap
 
 $(LOADER_INC): $(LOADER_GEN)

@@ -1,6 +1,11 @@
     IFNDEF CONST_INC_INCLUDED
 CONST_INC_INCLUDED EQU 1
 
+; Debug hooks — set to 0 for a release build.
+; DEBUG_GLITCH_KEY: pressing "G" at any time jumps into the fake-crash /
+; 128 boot-menu sequence, then returns to the interrupted state.
+DEBUG_GLITCH_KEY EQU 1
+
 ; Hardware ports
 PORT_BORDER     EQU #fe
 PORT_128MEM     EQU #7ffd
@@ -58,6 +63,7 @@ INK_CYAN        EQU 5
 INK_YELLOW      EQU 6
 INK_WHITE       EQU 7
 BRIGHT          EQU 64
+FLASH           EQU 128
 
 ; Common attribute combos
 ATTR_NORMAL     EQU INK_GREEN + (INK_BLACK*8) + BRIGHT
@@ -78,6 +84,49 @@ ATTR_GAUGE_BG   EQU INK_BLACK + (INK_BLACK*8)
 ATTR_HISCORE    EQU INK_CYAN + (INK_BLACK*8) + BRIGHT
 ATTR_HISCORE_HL EQU INK_WHITE + (INK_BLUE*8) + BRIGHT
 ATTR_PUPIL_BLINK EQU INK_RED + (INK_RED*8) + BRIGHT
+
+; ---- ZX Spectrum 128 boot menu (fake-crash glitch) ----------------
+; Geometry and colours measured off a screenshot of a real machine, so
+; the fake crash is indistinguishable from the genuine boot screen.
+; The menu box is 14 columns wide and 7 rows tall: one black title row
+; carrying "128" and the rainbow, five menu items, one blank row that
+; carries the box's bottom rule.
+BOOT_COL_L      EQU 7                              ; box left column
+BOOT_COL_R      EQU 20                             ; box right column
+BOOT_WIDTH      EQU BOOT_COL_R - BOOT_COL_L + 1
+BOOT_ROW_TOP    EQU 7                              ; black title bar
+BOOT_ROW_MENU   EQU 8                              ; first menu item
+BOOT_ROW_BOT    EQU 13                             ; blank row + bottom rule
+BOOT_TEXT_COL   EQU BOOT_COL_L + 1                 ; menu items sit 1 col in
+BOOT_RAIN_COL   EQU 15                             ; first rainbow cell
+BOOT_RAIN_CELLS EQU 5                              ; cols 15..19
+BOOT_COPY_ROW   EQU 23                             ; copyright at screen foot
+BOOT_COPY_COL   EQU 2                              ; centres the 28-char line
+
+; Everything outside the box is plain (non-bright) white; the box
+; interior is BRIGHT white, which is what makes it stand off the
+; background on a real machine.
+ATTR_BOOT_BG    EQU INK_BLACK + (INK_WHITE*8)
+ATTR_BOOT_BOX   EQU INK_BLACK + (INK_WHITE*8) + BRIGHT
+ATTR_BOOT_TITLE EQU INK_WHITE + (INK_BLACK*8) + BRIGHT
+ATTR_BOOT_SEL   EQU INK_BLACK + (INK_CYAN*8) + BRIGHT
+
+; How long the menu just sits there before the highlight moves. Two
+; seconds of a dead-still boot screen is what sells the crash.
+BOOT_HOLD_FRAMES EQU 100
+
+; ---- 128 BASIC editor screen (fake-crash glitch) -----------------
+; Also measured off a real machine: plain white paper with black text,
+; a black status bar on row 21 carrying "128 BASIC" at column 0 and the
+; same rainbow motif at columns 26..30, and a flashing block cursor.
+; There is no copyright line and no "0 OK, 0:1" report on this screen.
+BAS_BAR_ROW     EQU 21
+BAS_RAIN_COL    EQU 26
+ATTR_BAS_TEXT   EQU INK_BLACK + (INK_WHITE*8)               ; plain white paper
+ATTR_BAS_BAR    EQU INK_WHITE + (INK_BLACK*8) + BRIGHT
+; A solid cell of INK with FLASH set alternates ink and paper in
+; hardware, giving the editor's blue/white blinking cursor for free.
+ATTR_BAS_CURSOR EQU INK_BLUE + (INK_WHITE*8) + BRIGHT + FLASH
 
 ; Icon IDs (0-15)
 ICON_MEMORY     EQU 0
