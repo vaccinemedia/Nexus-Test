@@ -203,8 +203,9 @@ STATUS_ROW      EQU 0
 MAX_QUERY_ICONS EQU 3
 NUM_LEVELS      EQU 25
 MIRROR_LEVEL    EQU 25
-BASE_SCORE      EQU 100
-INTRO_DELAY     EQU 50                             ; ~1s at ~50 Hz — long enough to read the name
+BASE_SCORE      EQU 100                            ; subject 1's worth
+WORTH_STEP      EQU 4                              ; extra worth per level; subject 24 = 192
+INTRO_DELAY     EQU 500                            ; ~10s at ~50 Hz; 16-bit, intro_timer is a DW
 STARTING_LIVES  EQU 3
 
 ; Voight-Kampff gauge layout

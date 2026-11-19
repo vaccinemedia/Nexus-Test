@@ -115,7 +115,7 @@ subj_names:
     DISPLAY "Subject names: ", /D, SUBJ_NAME_COUNT, " records, ", /D, $ - subj_names, " bytes"
 
 ; --- Prepare the current subject for this level ---
-; Uses level_num (1-100) to pick a difficulty tier (0-4) and
+; Uses level_num (1-25) to pick a difficulty tier (0-4) and
 ; randomly selects human or android archetype, copying it into
 ; current_subject. Randomises portrait seed.
 prepare_current_subject:
@@ -193,6 +193,22 @@ prepare_current_subject:
     ld (ix + SUBJ_PORTRAIT), a
     call rng_tick
     ld (ix + SUBJ_PORTRAIT + 1), a
+
+    ; Fix this subject's value now, so the intro screen and the verdict
+    ; score from the same numbers. Worth rises with the level and so does
+    ; the cost of each question: later subjects pay more but punish
+    ; dithering harder.
+    ld a, (level_num)
+    call get_penalty
+    ld (subj_penalty), a
+    ld a, (level_num)
+    dec a
+    add a, a
+    add a, a                       ; (level - 1) * WORTH_STEP
+    ASSERT WORTH_STEP == 4, "subject worth is computed with two doublings"
+    ASSERT BASE_SCORE + (NUM_LEVELS - 1) * WORTH_STEP <= 255, "subject worth no longer fits a byte"
+    add a, BASE_SCORE
+    ld (subj_worth), a
     ret
 
 pcs_tier: DB 0
@@ -276,15 +292,4 @@ get_penalty:
     add hl, de
     ld a, (hl)
     ret
-
-penalty_table:
-    ; L1-5 (T0): 5,5,6,6,7
-    DB 5, 5, 6, 6, 7
-    ; L6-10 (T1): 8,8,9,10,10
-    DB 8, 8, 9, 10, 10
-    ; L11-15 (T2): 11,12,12,13,14
-    DB 11, 12, 12, 13, 14
-    ; L16-20 (T3): 14,15,16,17,18
-    DB 14, 15, 16, 17, 18
-    ; L21-25 (T4): 18,19,19,20,20
-    DB 18, 19, 19, 20, 20
+; penalty_table lives in bank 5 (see nexus.asm).

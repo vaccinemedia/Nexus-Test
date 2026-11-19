@@ -31,7 +31,7 @@ level_intro_frame:
     ld a, INK_CYAN + (INK_BLACK*8) + BRIGHT
     call clear_screen_attrs
 
-    ; "SUBJECT N OF 100"
+    ; "SUBJECT N OF 25"
     ld a, 8
     ld (pr_col), a
     ld a, 8
@@ -65,8 +65,35 @@ level_intro_frame:
     ld (pr_row), a
     call print_str
 
-    ld a, INTRO_DELAY
-    ld (intro_timer), a
+    ; What this subject is worth, and what each question costs. The mirror
+    ; level ends in Batty's monologue rather than a verdict, so it shows none.
+    ld a, (is_mirror_level)
+    or a
+    jr nz, .li_no_value
+    ld a, 8
+    ld (pr_col), a
+    ld a, 14
+    ld (pr_row), a
+    ld hl, str_worth
+    call print_str
+    ld a, (subj_worth)
+    call li_spaced_num
+    ld hl, str_awarded
+    call print_str
+    ld a, 6
+    ld (pr_col), a
+    ld a, 16
+    ld (pr_row), a
+    ld hl, str_cost
+    call print_str
+    ld a, (subj_penalty)
+    call li_spaced_num
+    ld hl, str_per_q
+    call print_str
+.li_no_value:
+
+    ld hl, INTRO_DELAY
+    ld (intro_timer), hl
     ld a, 1
     ld (screen_drawn), a
     ; The verdict screen advances on a key being held rather than newly
@@ -88,11 +115,12 @@ level_intro_frame:
     ld a, 1
     ld (intro_skip_armed), a
 .li_tick:
-    ld a, (intro_timer)
-    or a
+    ld hl, (intro_timer)
+    ld a, h
+    or l
     jr z, .li_go
-    dec a
-    ld (intro_timer), a
+    dec hl
+    ld (intro_timer), hl
     ret
 .li_go:
     ; Restore ROM font for gameplay
@@ -128,7 +156,20 @@ level_intro_frame:
     ld (game_state), a
     ret
 
-intro_timer: db 0
+; Prints A as a number with a space either side, at the print cursor.
+li_spaced_num:
+    ld l, a
+    ld h, 0
+    ld a, (pr_col)
+    inc a
+    ld (pr_col), a
+    call print_num16
+    ld a, (pr_col)
+    inc a
+    ld (pr_col), a
+    ret
+
+intro_timer: dw 0
 intro_skip_armed: db 0           ; 0 = waiting for the held key to be released
 
 ; ===============================================================
@@ -1088,9 +1129,8 @@ verdict_frame:
 .vf_correct:
     ld a, 1
     ld (verdict_correct), a
-    ; Score = max(0, 100 - questions_asked * penalty)
-    ld a, (level_num)
-    call get_penalty    ; A = penalty per question
+    ; Score = max(0, subj_worth - questions_asked * subj_penalty)
+    ld a, (subj_penalty)
     ld b, a
     ld a, (questions_asked)
     or a
@@ -1105,14 +1145,14 @@ verdict_frame:
     jr nz, .vf_mul
     ; A = total penalty
     ld b, a
-    ld a, BASE_SCORE
+    ld a, (subj_worth)
     sub b
     jr nc, .vf_got_score
 .vf_zero_score:
     xor a
     jr .vf_got_score
 .vf_full_score:
-    ld a, BASE_SCORE
+    ld a, (subj_worth)
 .vf_got_score:
     ld (level_score), a
     ; Add to total
@@ -1259,7 +1299,7 @@ verdict_frame:
     ; Advance to next level
     ld a, (level_num)
     cp NUM_LEVELS
-    jr nc, .vf_gameover         ; completed all 100 levels
+    jr nc, .vf_gameover         ; completed all NUM_LEVELS levels
     inc a
     ld (level_num), a
     ld a, ST_LEVEL_INTRO

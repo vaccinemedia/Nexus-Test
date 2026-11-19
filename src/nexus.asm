@@ -154,7 +154,9 @@ glitch_saved_font EQU type_start_col + 1           ; DW; stashed by kind 8 font 
 intro_phase       EQU glitch_saved_font + 2        ; 0=init, 1=typing, 2=hold, 3=exit
 intro_hold        EQU intro_phase + 1              ; DW; frames until intro auto-advances
 name_order        EQU intro_hold + 2               ; 32 bytes; shuffled subject-name indices
-LowRamVarsEnd     EQU name_order + SUBJ_NAME_COUNT
+subj_worth        EQU name_order + SUBJ_NAME_COUNT ; points for an instant correct verdict
+subj_penalty      EQU subj_worth + 1               ; points lost per question asked
+LowRamVarsEnd     EQU subj_penalty + 1
     ; The printer buffer is only 256 bytes; #5C00 upwards is the system
     ; variable area and clobbering it will hang the machine.
     ASSERT LowRamVarsEnd <= #5C00, "Low-RAM variables overran the printer buffer"
@@ -190,8 +192,6 @@ hiscore_cursor:  DB 0
 
 GameCodeEnd:
     DISPLAY "Main image: ", /D, GameCodeEnd - Entry, " bytes  (headroom to #FFF7: ", /D, #FFF7 - GameCodeEnd, ")"
-    INCLUDE "loader_basic.inc"
-LoaderBasicLen EQU LoaderBasicEnd - LoaderBasic
 
 ; -----------------------------------------------------------------
 ; Sample data lives in bank 5 (#4000-#7FFF) which is always mapped
@@ -685,6 +685,25 @@ hr_file_a1: DB "Am I in trouble?",0
 hr_file_a2: DB "Please stop writing that.",0
 hr_file_a3: DB "You are judging me.",0
 
+; ==================================================================
+; SUBJECT VALUE — per-question cost by level, plus the intro screen's
+; labels for it. Here rather than in the main image, which is full.
+; ==================================================================
+penalty_table:
+    ; L1-5 (T0): 5,5,6,6,7
+    DB 5, 5, 6, 6, 7
+    ; L6-10 (T1): 8,8,9,10,10
+    DB 8, 8, 9, 10, 10
+    ; L11-15 (T2): 11,12,12,13,14
+    DB 11, 12, 12, 13, 14
+    ; L16-20 (T3): 14,15,16,17,18
+    DB 14, 15, 16, 17, 18
+    ; L21-25 (T4): 18,19,19,20,20
+    DB 18, 19, 19, 20, 20
+str_worth:  DB "WORTH",0
+str_cost:   DB "COST",0
+str_per_q:  DB "PER QUESTION",0
+
 GlitchStringsEnd:
 GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart
     ; Stack pointer starts at #7FF0. Deepest observed call depth
@@ -694,11 +713,23 @@ GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart
     ASSERT GlitchStringsEnd <= #7F80, "Glitch strings pushed too close to stack top"
     DISPLAY "Glitch strings at #6900, size: ", /D, GlitchStringsLen, " bytes (top #", /A, GlitchStringsEnd, ")"
 
+    ; The BASIC loader is only ever written out by SAVETAP as a BASIC
+    ; block — it is never loaded at this address — so it is assembled in
+    ; the unused gap below the stack rather than after the main image,
+    ; where it would take bytes the game code needs.
+    ORG #7F90
+    INCLUDE "loader_basic.inc"
+LoaderBasicLen EQU LoaderBasicEnd - LoaderBasic
+    ASSERT LoaderBasicEnd <= #7FF0, "BASIC loader scratch copy overlaps the stack top"
+
+    ; The loader must be saved while bank 5 is still mapped at #4000-#7FFF:
+    ; once PAGE 0 runs, #7F90 shows bank 0 and the BASIC block saves empty.
+    EMPTYTAP "nexus.tap"
+    SAVETAP "nexus.tap", BASIC, "nexus", LoaderBasic, LoaderBasicLen, 10
+
     ; Return to bank 0 for anything that follows
     PAGE 0
 
-    EMPTYTAP "nexus.tap"
-    SAVETAP "nexus.tap", BASIC, "nexus", LoaderBasic, LoaderBasicLen, 10
     SAVETAP "nexus.tap", CODE, "nexus", Entry, GameCodeEnd - Entry, #8000
     ; Bank 5 blob — samples (#6000) + glitch strings (#6900), always visible
     PAGE 5

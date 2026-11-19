@@ -641,7 +641,7 @@ str_title:      DB "NEXUS TEST",0
 str_subtitle:   DB "ANDROID DETECTION UNIT",0
 str_press:      DB "PRESS ANY KEY",0
 str_subject:    DB "SUBJECT",0
-str_of:         DB "OF 100",0
+str_of:         DB "OF 25",0                         ; keep in step with NUM_LEVELS
 str_lvl:        DB "LVL",0
 str_score:      DB "SC",0
 str_asked:      DB "Q",0
