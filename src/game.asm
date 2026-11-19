@@ -1151,8 +1151,11 @@ verdict_frame:
     call print_str
 
 .vf_draw_score:
-    ; Show what player said
-    ld a, (player_verdict)
+    ; Show what the subject really was, not what the player pressed —
+    ; under "YOU'RE WRONG!" an echo of the player's answer reads as the
+    ; subject's identity and makes a wrong guess look like a scoring bug.
+    ld hl, (current_subj)
+    ld a, (hl)
     or a
     jr nz, .vf_said_android
     ld a, 9

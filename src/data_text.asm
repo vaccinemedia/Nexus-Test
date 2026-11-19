@@ -655,8 +655,8 @@ str_correct:    DB "HELL YEAH!",0
 str_wrong:      DB "YOU'RE WRONG!",0
 str_awarded:    DB "POINTS",0
 str_total:      DB "TOTAL",0
-str_human:      DB "VERDICT: HUMAN",0
-str_android:    DB "VERDICT: ANDROID",0
+str_human:      DB "SUBJECT: HUMAN",0
+str_android:    DB "SUBJECT: ANDROID",0
 str_final:      DB "FINAL SCORE",0
 str_gameover:   DB "GAME OVER",0
 str_plus:       DB "+",0
