@@ -240,9 +240,19 @@ BANK_1_48ROM    EQU #11
 BANK_3_48ROM    EQU #13
 BANK_4_48ROM    EQU #14
 
-; IM 2 music interrupt (see music_isr). Every bank that can be paged in
-; at #C000 while interrupts are on needs the stub at #FFF4 and #FFFF.
-IM2_I           EQU #39             ; 48K ROM page full of #FF
-IM2_STUB        EQU #FFF4           ; JP music_isr; #FFFF holds JR to here
+; Memory map (128K): bank 5 #4000 screen, low vars, samples, strings, stack;
+; bank 2 #8000 all code; bank 0 #C000 text; bank 1 #C000 title picture.
+BANK_HOME       EQU BANK_0_48ROM
+BANK_TITLE      EQU BANK_1_48ROM
+
+; IM 2 music interrupt (see music_isr). The vector table sits in bank 2 so
+; it is there whatever is paged at #C000, and doesn't depend on ROM
+; contents (the +2A/+3 48K ROM has no #FF page).
+IM2_TABLE       EQU #BE00           ; 257 bytes of IM2_VECTOR >> 8
+IM2_VECTOR      EQU #BFBF           ; JP music_isr
+IM2_I           EQU IM2_TABLE >> 8
+
+ROM_LD_BYTES    EQU #0556
+ROM_SYSVARS     EQU #5C3A           ; IY value the ROM interrupt handler expects
 
     ENDIF

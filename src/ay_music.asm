@@ -101,10 +101,9 @@ ay_tick_music:
     ret
 
 ; ---- Interrupt-driven music ----
-; IM 2 with I = #39: the 48K ROM holds #FF from #3900 to #3A00, so every
-; interrupt vectors to #FFFF whatever the data bus holds. The JR there
-; takes the ROM's first byte (#F3) as its offset and lands on IM2_STUB,
-; which jumps here. I stays out of #40-#7F, which upsets the 128K's ULA.
+; IM 2 through the table at IM2_TABLE: every byte is the same, so every
+; interrupt vectors to IM2_VECTOR whatever the data bus holds, and the JP
+; there comes here. I stays out of #40-#7F, which upsets the 128K's ULA.
 music_isr:
     push af
     push bc
@@ -134,23 +133,11 @@ music_isr:
     ei
     reti
 
-; Starts IM 2, with the bank now at #C000 given the stub.
 music_isr_setup:
-    call music_isr_stub
     ld a, IM2_I
     ld i, a
     im 2
     ei
-    ret
-
-; Writes the #FFF4/#FFFF stub into the bank at #C000.
-music_isr_stub:
-    ld a, #C3                ; JP music_isr
-    ld (IM2_STUB), a
-    ld hl, music_isr
-    ld (IM2_STUB + 1), hl
-    ld a, #18                ; JR -> IM2_STUB
-    ld (#FFFF), a
     ret
 
 ; ---- In-game ambient init ----
@@ -373,8 +360,8 @@ sfx_start_type:
 
 ; ===============================================================
 ; Beeper 1-bit PCM sample playback.
-; Sample data lives in bank 5 (#6000-#68D1) which is always mapped
-; regardless of paging state, so no bank tricks are needed here.
+; Sample data lives in bank 0, the home bank, which is paged in
+; whenever these are called.
 ; Plays packed 1-bit data (8 samples/byte, MSB first) at ~8 kHz.
 ; CPU is locked during playback (`di`/`ei`) to keep timing steady.
 ; ===============================================================

@@ -467,7 +467,7 @@ type_engine:
 ; monologue fragment, then returns to level intro.
 ; =================================================================
 ; --------------------------------------------------------------
-; glitch_med_frame — reads deckard_fragments (bank 5 @ #6900+).
+; glitch_med_frame — reads deckard_fragments (bank 5 @ #6000+).
 ; All string data is in bank 5 (always mapped), so no paging is
 ; needed here.
 ; --------------------------------------------------------------
@@ -542,7 +542,7 @@ gm_hold:
     ld (crash_phase), a
     ret
 
-; deckard_fragments (+ frag_1/2/3) live in bank 5 at #6900+, see nexus.asm.
+; deckard_fragments (+ frag_1/2/3) live in bank 5 at #6000+, see nexus.asm.
 
 ; =================================================================
 ; ST_GLITCH_CRASH — full fake-crash sequence.
@@ -550,7 +550,7 @@ gm_hold:
 ; =================================================================
 ; --------------------------------------------------------------
 ; glitch_crash_frame — reads boot_menu_lines, basic_listing,
-; deeper_text (all in bank 5 @ #6900+, always mapped).
+; deeper_text (all in bank 5 @ #6000+, always mapped).
 ; --------------------------------------------------------------
 glitch_crash_frame:
     ld a, (crash_phase)
@@ -845,7 +845,7 @@ gc_p10:
 ; padding below the position-dependent player address.
 ;
 ; boot_menu_lines, basic_listing, deeper_text live in bank 5 at
-; #6900+ (always mapped alongside the samples). See nexus.asm.
+; #6000+ (always mapped). See nexus.asm.
 
 str_boot_128:    DB "128",0
 str_bas_bar:     DB "128 BASIC",0

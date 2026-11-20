@@ -9,14 +9,47 @@ video_home_128:
     out (c), a
     ret
 
-; --- Paging proof: #C000 bank 3 vs bank 4 ---
-; Banks 3 and 4 are unused by the loader, so probing them doesn't
-; corrupt game code (bank 0) or sample data (bank 1). Keeps bit 4
-; (48K ROM) set throughout so BASIC-adjacent state stays sane.
-; Probes 128K bank paging using banks 4 and 6, which the loader
-; leaves empty (bank 3 now holds glitch strings, bank 1 holds
-; samples, so we can't safely scribble on those). Bit 4 keeps the
-; 48K ROM mapped; bit 5 is always clear so paging stays enabled.
+; A = #7FFD value. Code that pages must sit below #C000, and must call
+; page_home before touching text, which lives in the home bank.
+page_home:
+    ld a, BANK_HOME
+page_in:
+    ld bc, PORT_128MEM
+    out (c), a
+    ret
+
+; Loads the headerless tape blocks listed at bank_blocks (bank, length;
+; each loads at #C000) that follow the BASIC-loaded program. Runs once,
+; after verify_paging has finished scribbling on banks 4 and 6.
+load_banks:
+    ld a, (paging_ok)
+    or a
+    ret z
+    ld hl, bank_blocks
+.block:
+    ld a, (hl)
+    or a
+    jr z, page_home
+    inc hl
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+    inc hl
+    push hl
+    call page_in
+    ld ix, #C000
+    ld iy, ROM_SYSVARS              ; LD-BYTES re-enables interrupts on exit
+    ld a, #FF
+    scf
+    call ROM_LD_BYTES
+    di
+    pop hl
+    jr .block
+
+; --- Paging proof ---
+; Probes 128K bank paging using banks 4 and 6 before load_banks fills
+; any of them. Bit 4 keeps the 48K ROM mapped; bit 5 is always clear so
+; paging stays enabled.
 verify_paging:
     ld bc, #7ffd
     ld a, #14                ; bank 4, 48K ROM

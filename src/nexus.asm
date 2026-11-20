@@ -9,13 +9,12 @@
 Entry:
     di
     ; Put the stack in bank 5 (#4000-#7FFF), which is always mapped
-    ; regardless of the memory-paging state at #C000-#FFFF. Bank 5
-    ; also holds our samples (#6000) and glitch strings (#6900), so
-    ; nothing time-critical needs paging at runtime. #7FF0 gives
-    ; ~4.5 KB of headroom above the glitch strings' top (#6D32).
+    ; regardless of the memory-paging state at #C000-#FFFF. It grows
+    ; down towards the glitch strings (#6000 up, asserted below #7F80).
     ld sp, #7ff0
     call ay_mute
     call verify_paging
+    call load_banks
     call music_isr_setup
     call video_home_128
     call init_custom_font
@@ -77,7 +76,6 @@ ml_noop:
     INCLUDE "portrait.asm"
     INCLUDE "question.asm"
     INCLUDE "subjects.asm"
-    INCLUDE "data_text.asm"
     INCLUDE "title.asm"
     INCLUDE "game.asm"
     INCLUDE "hiscore.asm"
@@ -191,42 +189,46 @@ hiscore_new_pos: DB #FF
 hiscore_initials: DB "AAA"
 hiscore_cursor:  DB 0
 
+; Headerless blocks after the main program, loaded by load_banks: bank to
+; page in, then length (each loads at #C000). 0 ends the list.
+bank_blocks:
+    DB BANK_TITLE
+    DW TitleBankEnd - #C000
+    DB 0
+
 GameCodeEnd:
-    DISPLAY "Main image: ", /D, GameCodeEnd - Entry, " bytes  (headroom to IM2_STUB: ", /D, IM2_STUB - GameCodeEnd, ")"
-    ASSERT GameCodeEnd <= IM2_STUB, "Main image overlaps the IM 2 stub at #FFF4"
-    ASSERT music_isr_stub < #C000, "Music interrupt code must not be paged out"
+    DISPLAY "Bank 2 code: ", /D, GameCodeEnd - Entry, " bytes (free ", /D, IM2_TABLE - GameCodeEnd, ")"
+    ASSERT GameCodeEnd <= IM2_TABLE, "Bank 2 code overlaps the IM 2 vector table"
+
+    ORG IM2_TABLE
+    DS 257, IM2_VECTOR >> 8
+    ORG IM2_VECTOR
+    jp music_isr
 
 ; -----------------------------------------------------------------
-; Sample data lives in bank 5 (#4000-#7FFF) which is always mapped
-; regardless of the memory paging state — no bank-switch tricks
-; needed at playback time. We place it at #6000, well above the
-; screen attributes, our uninitialised game vars and system vars,
-; and well below the stack top at #7FF0.
+; Bank 0, the home bank at #C000: text and beeper samples. Loaded with
+; the code as one block; anything that pages another bank in must page
+; it back.
 ; -----------------------------------------------------------------
-    SLOT 1                       ; slot 1 = #4000-#7FFF (bank 5)
-    PAGE 5
-    ORG #6000
-SamplesStart:
+    ORG #C000
+HomeDataStart:
+    INCLUDE "data_text.asm"
 hellyeah_data:
     INCBIN "hellyeah.bin"
 HELLYEAH_BYTES EQU $ - hellyeah_data
 ohno_data:
     INCBIN "ohno.bin"
 OHNO_BYTES EQU $ - ohno_data
-SamplesEnd:
-SamplesLen EQU SamplesEnd - SamplesStart
-    ASSERT SamplesEnd <= #6900, "Samples grew past #6900 — glitch strings expect this boundary"
-    DISPLAY "Samples at #6000, size: ", /D, SamplesLen, " bytes (top #", /A, SamplesEnd, ")"
+HomeDataEnd:
+    DISPLAY "Bank 0 text + samples: ", /D, HomeDataEnd - HomeDataStart, " bytes (free ", /D, #10000 - HomeDataEnd, ")"
 
 ; -----------------------------------------------------------------
-; Glitch/mirror strings — kept in bank 5 alongside the samples so
-; that they are always mapped regardless of the paging state, and
-; kept out of the main image so the pre-#93F8 code region stays
-; within the AKM player's fixed anchor address at #93F8.
+; Glitch/mirror strings — in bank 5, which is always mapped whatever
+; the paging state, from #6000 up to below the stack.
 ; -----------------------------------------------------------------
-    SLOT 1
+    SLOT 1                       ; slot 1 = #4000-#7FFF (bank 5)
     PAGE 5
-    ORG #6900
+    ORG #6000
 GlitchStringsStart:
 
 deckard_fragments:
@@ -710,11 +712,10 @@ str_per_q:  DB "PER QUESTION",0
 GlitchStringsEnd:
 GlitchStringsLen EQU GlitchStringsEnd - GlitchStringsStart
     ; Stack pointer starts at #7FF0. Deepest observed call depth
-    ; (interrogation frame + drawing + interrupts) is well under 100
-    ; bytes, so a ceiling of #7F80 leaves 112 bytes of stack headroom
-    ; while giving the string block ~6.5 KB total to work with.
+    ; (interrogation frame + drawing + music interrupt) is well under
+    ; 100 bytes; #7F80 leaves 112 bytes of stack headroom.
     ASSERT GlitchStringsEnd <= #7F80, "Glitch strings pushed too close to stack top"
-    DISPLAY "Glitch strings at #6900, size: ", /D, GlitchStringsLen, " bytes (top #", /A, GlitchStringsEnd, ")"
+    DISPLAY "Bank 5 strings at #6000: ", /D, GlitchStringsLen, " bytes (free below stack ", /D, #7F80 - GlitchStringsEnd, ")"
 
     ; The BASIC loader is only ever written out by SAVETAP as a BASIC
     ; block — it is never loaded at this address — so it is assembled in
@@ -733,10 +734,22 @@ LoaderBasicLen EQU LoaderBasicEnd - LoaderBasic
     ; Return to bank 0 for anything that follows
     PAGE 0
 
-    SAVETAP "nexus.tap", CODE, "nexus", Entry, GameCodeEnd - Entry, #8000
-    ; Bank 5 blob — samples (#6000) + glitch strings (#6900), always visible
+    SAVETAP "nexus.tap", CODE, "nexus", Entry, HomeDataEnd - Entry, #8000
+    ; Bank 5 glitch strings (#6000), always visible
     PAGE 5
-    SAVETAP "nexus.tap", CODE, "samples", SamplesStart, SamplesLen, #6000
-    SAVETAP "nexus.tap", CODE, "strings", GlitchStringsStart, GlitchStringsLen, #6900
+    SAVETAP "nexus.tap", CODE, "strings", GlitchStringsStart, GlitchStringsLen, #6000
+
+; -----------------------------------------------------------------
+; Paged banks, loaded at start-up by load_banks as headerless blocks in
+; bank_blocks order.
+; -----------------------------------------------------------------
+    SLOT 3
+    PAGE 1
+    ORG #C000
+title_scr_data:
+    INCBIN "title.scr"
+TitleBankEnd:
+    SAVETAP "nexus.tap", HEADLESS, #C000, TitleBankEnd - #C000, #FF
+    DISPLAY "Bank 1 title: ", /D, TitleBankEnd - #C000, " bytes (free ", /D, #10000 - TitleBankEnd, ")"
     PAGE 0
     END Entry

@@ -14,8 +14,11 @@ title_frame:
     jp nz, .tf_no_redraw
 
     ; Copy the pre-converted SCR bitmap directly to screen memory
+    ld a, BANK_TITLE
+    call page_in
     ld hl, title_scr_data
     call copy_scr_to_screen
+    call page_home
 
     ; Black strips behind bottom text rows (20, 22)
     ld d, 20
@@ -205,7 +208,3 @@ intro_frame:
     ld a, 3
     ld (intro_phase), a
     ret
-
-; The 6912-byte SCR data is included directly
-title_scr_data:
-    INCBIN "title.scr"

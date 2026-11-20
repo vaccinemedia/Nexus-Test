@@ -22,7 +22,16 @@ make
 Output:
 
 - **`out/nexus.sna`** — open in FuseX as **Spectrum 128** (recommended).
-- **`out/nexus.tap`** — BASIC loader + CODE at **#8000**.
+- **`out/nexus.tap`** — BASIC loader, CODE at **#8000** (code + home bank), CODE at **#6000** (bank 5 strings), then headerless blocks for the paged banks, which the game loads itself at start-up.
+
+Memory map (128K, any model including +2A/+3):
+
+| Bank | Address | Contents |
+|---|---|---|
+| 5 | `#4000` | Screen, low-RAM variables (`#5B00`), glitch strings (`#6000`), stack (`#7FF0`) |
+| 2 | `#8000` | All code, AKM player and song, variables, IM 2 vector table (`#BE00`) |
+| 0 | `#C000` | Home bank: text and beeper samples |
+| 1 | `#C000` | Title picture (headerless block) |
 
 ```bash
 make run    # macOS: tries to open out/nexus.sna in FuseX
