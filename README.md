@@ -30,7 +30,7 @@ make run    # macOS: tries to open out/nexus.sna in FuseX
 
 ## Troubleshooting
 
-- **Snapshot “hangs”** — the main loop uses **`wait_frame`** (busy wait), not `HALT`, while the CPU runs with **interrupts disabled**; use a current build and a fresh `.sna`.
+- **Snapshot “hangs”** — the main loop uses **`wait_frame`** (busy wait), not `HALT`; music runs from an **IM 2 interrupt** (`music_isr`) set up at start-up, so a snapshot taken before that point won't play. Use a current build and a fresh `.sna`.
 - **TAP stops at `0 OK, 10:4`** — use the generated **`nexus.tap`** from this repo (BASIC + CODE), not an old snapshot-as-tape format.
 - **Garbled title music after changing code** — run **`make clean && make`** so the AKM player and relocated song match the new layout.
 - **`make` fails: RASM not found** — install/build RASM and point `RASM` in the Makefile, or restore `akm_player.bin` / `title_music_relocated.akm` from a successful build before using sjasmplus alone.

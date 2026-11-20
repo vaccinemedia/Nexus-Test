@@ -5,7 +5,21 @@
 
 ; ---- Register write (used by ambient/SFX modes) ----
 ; D = register 0-15, A = value
+; Selecting the register and writing it must not be split by the music
+; interrupt, which writes AY registers too. Interrupts are only re-enabled
+; if they were on, so this is also safe inside the interrupt routine.
 ay_out:
+    push af
+    ld a, i                  ; P/V = IFF2
+    jp po, .ints_off
+    di
+    pop af
+    call ay_write
+    ei
+    ret
+.ints_off:
+    pop af
+ay_write:
     push bc
     push af
     ld b, #ff
@@ -17,8 +31,10 @@ ay_out:
     pop bc
     ret
 
+; Silences the AY and stops the music interrupt driving it.
 ay_mute:
     xor a
+    ld (music_mode), a
     ld d, 0
     ld b, 14
 .am_lp:
@@ -62,33 +78,79 @@ SFX_TYPE      EQU 6                        ; short noise blip — typewriter key
 
 ; ---- Title music: Arkos Tracker AKM player ----
 ay_init_title:
-    ld a, 1
-    ld (music_mode), a
     xor a
     ld (sfx_timer), a
     ld (sfx_id), a
     ld hl, akm_song_data
-    xor a
     di
     call PLY_AKM_Init
+    ld a, 1                  ; only now may the interrupt play it
+    ld (music_mode), a
     ei
     ret
 
-; ---- Main music tick (call once per frame from any state) ----
+; ---- Music tick: run by music_isr every frame, interrupts off ----
 ay_tick_music:
     ld a, (music_mode)
     cp 1
-    jp z, ay_tick_title_mode
+    jp z, PLY_AKM_Play
     cp 2
     jp z, ay_tick_ambient_mode
     cp 3
     jp z, ay_tick_outro_mode
     ret
 
-ay_tick_title_mode:
-    di
-    call PLY_AKM_Play
+; ---- Interrupt-driven music ----
+; IM 2 with I = #39: the 48K ROM holds #FF from #3900 to #3A00, so every
+; interrupt vectors to #FFFF whatever the data bus holds. The JR there
+; takes the ROM's first byte (#F3) as its offset and lands on IM2_STUB,
+; which jumps here. I stays out of #40-#7F, which upsets the 128K's ULA.
+music_isr:
+    push af
+    push bc
+    push de
+    push hl
+    ex af, af'
+    push af
+    exx
+    push bc
+    push de
+    push hl
+    push ix
+    push iy
+    call ay_tick_music
+    pop iy
+    pop ix
+    pop hl
+    pop de
+    pop bc
+    exx
+    pop af
+    ex af, af'
+    pop hl
+    pop de
+    pop bc
+    pop af
     ei
+    reti
+
+; Starts IM 2, with the bank now at #C000 given the stub.
+music_isr_setup:
+    call music_isr_stub
+    ld a, IM2_I
+    ld i, a
+    im 2
+    ei
+    ret
+
+; Writes the #FFF4/#FFFF stub into the bank at #C000.
+music_isr_stub:
+    ld a, #C3                ; JP music_isr
+    ld (IM2_STUB), a
+    ld hl, music_isr
+    ld (IM2_STUB + 1), hl
+    ld a, #18                ; JR -> IM2_STUB
+    ld (#FFFF), a
     ret
 
 ; ---- In-game ambient init ----
@@ -106,12 +168,12 @@ ay_init_ambient:
     ld d, 1
     ld a, #06
     call ay_out
-    ld a, 2
-    ld (music_mode), a
     xor a
     ld (bass_step), a
     ld a, 1
     ld (bass_timer), a
+    ld a, 2
+    ld (music_mode), a
     ret
 
 ; ---- Ambient tick: 4 beats per bar, decreasing volume ----
@@ -160,6 +222,11 @@ amb_pattern:
 
 ; ---- SFX trigger: A = SFX_xxx ----
 ay_play_sfx:
+    di                       ; the music interrupt ticks sfx_timer
+    call .start
+    ei
+    ret
+.start:
     ld (sfx_id), a
     or a
     ret z

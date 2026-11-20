@@ -835,8 +835,6 @@ gc_p10:
     ret nz
     xor a
     out (#fe), a                 ; back to the game's black border
-    call ay_init_ambient
-    xor a
     ld (screen_drawn), a
     ld a, ST_LEVEL_INTRO
     ld (game_state), a

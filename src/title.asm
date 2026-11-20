@@ -63,8 +63,6 @@ title_frame:
     ld (attract_timer), hl
 
 .tf_no_redraw:
-    call ay_tick_music
-
     ; Attract mode timer
     ld hl, (attract_timer)
     inc hl

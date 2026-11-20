@@ -240,4 +240,9 @@ BANK_1_48ROM    EQU #11
 BANK_3_48ROM    EQU #13
 BANK_4_48ROM    EQU #14
 
+; IM 2 music interrupt (see music_isr). Every bank that can be paged in
+; at #C000 while interrupts are on needs the stub at #FFF4 and #FFFF.
+IM2_I           EQU #39             ; 48K ROM page full of #FF
+IM2_STUB        EQU #FFF4           ; JP music_isr; #FFFF holds JR to here
+
     ENDIF

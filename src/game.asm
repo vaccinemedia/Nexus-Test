@@ -192,7 +192,6 @@ interrogation_frame:
     ld (screen_drawn), a
 
 .int_input:
-    call ay_tick_music
     ; Auto-running gauges on the mirror level (no player input needed)
     ld a, (is_mirror_level)
     or a
@@ -1118,7 +1117,6 @@ verdict_frame:
     jr nz, .vf_draw
     ; Final death: play the "oh no" sample, then game over
     call play_oh_no
-    call ay_init_ambient
     call use_rom_font
     xor a
     ld (screen_drawn), a
@@ -1268,11 +1266,9 @@ verdict_frame:
     or a
     jr z, .vf_wrong_sample
     call play_hell_yeah
-    call ay_init_ambient
     jr .vf_sample_done
 .vf_wrong_sample:
     call play_oh_no
-    call ay_init_ambient
 .vf_sample_done:
 
     ld a, 1

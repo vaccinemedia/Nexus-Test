@@ -22,8 +22,6 @@ hiscore_frame:
     ld (attract_timer), hl
 
 .hs_tick:
-    call ay_tick_music
-
     ; Increment attract timer
     ld hl, (attract_timer)
     inc hl

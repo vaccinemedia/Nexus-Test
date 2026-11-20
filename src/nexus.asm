@@ -16,6 +16,7 @@ Entry:
     ld sp, #7ff0
     call ay_mute
     call verify_paging
+    call music_isr_setup
     call video_home_128
     call init_custom_font
     call title_init
@@ -191,7 +192,9 @@ hiscore_initials: DB "AAA"
 hiscore_cursor:  DB 0
 
 GameCodeEnd:
-    DISPLAY "Main image: ", /D, GameCodeEnd - Entry, " bytes  (headroom to #FFF7: ", /D, #FFF7 - GameCodeEnd, ")"
+    DISPLAY "Main image: ", /D, GameCodeEnd - Entry, " bytes  (headroom to IM2_STUB: ", /D, IM2_STUB - GameCodeEnd, ")"
+    ASSERT GameCodeEnd <= IM2_STUB, "Main image overlaps the IM 2 stub at #FFF4"
+    ASSERT music_isr_stub < #C000, "Music interrupt code must not be paged out"
 
 ; -----------------------------------------------------------------
 ; Sample data lives in bank 5 (#4000-#7FFF) which is always mapped

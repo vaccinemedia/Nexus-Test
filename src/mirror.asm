@@ -145,7 +145,6 @@ mirror_tick_gauges:
 ; Phase 7: exit to gameover.
 ; =================================================================
 mirror_end_frame:
-    call ay_tick_music                   ; drive the outro voices (mode 3)
     ld a, (mirror_phase)
     add a, a
     ld e, a
